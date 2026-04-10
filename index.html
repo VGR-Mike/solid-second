@@ -249,6 +249,10 @@
   .equip-item-name { font-size: 13px; font-weight: 600; }
   .equip-item-sub { font-size: 11px; color: var(--ss-text-muted); }
   .equip-item-qty { font-size: 20px; font-weight: 800; color: var(--ss-orange); min-width: 40px; text-align: right; }
+  .equip-item-actions { display: flex; align-items: center; gap: 6px; }
+  .eq-edit-btn, .eq-del-btn { background: none; border: 1px solid var(--ss-border-subtle); border-radius: 6px; cursor: pointer; font-size: 12px; padding: 4px 7px; opacity: 0.5; transition: all 0.15s; }
+  .eq-edit-btn:hover { opacity: 1; border-color: var(--ss-orange); color: var(--ss-orange); }
+  .eq-del-btn:hover { opacity: 1; border-color: #C62828; color: #C62828; }
 
   .type-tag {
     display: inline-block; font-size: 9px; font-weight: 700;
@@ -734,6 +738,7 @@
   <div class="section-title">
     <span>Fireworks Inventory</span>
     <div style="display:flex;gap:6px;">
+      <button class="btn-export" onclick="clearInventory()" style="color:#C62828;border-color:#C62828;">Clear All</button>
       <button class="btn-export" onclick="exportInventory()">Export</button>
     </div>
   </div>
@@ -800,27 +805,39 @@
       <select id="editMember"></select>
     </div>
     <div class="form-group">
-      <label>Equipment Type</label>
-      <select id="editType" onchange="updateEditItem()">
-        <option value="">Select category...</option>
-        <option value="module">COBRA Module</option>
-        <option value="controller">COBRA Controller</option>
-        <option value="accessory">Accessory / Slats / Cables</option>
-        <option value="fireball">Fireball Tubes</option>
-        <option value="rack">Craigco Racks</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label>Item</label>
-      <select id="editItem" onchange="updateEditCue()">
-        <option value="">Select type first...</option>
-      </select>
-    </div>
-    <div class="form-group" id="editCueGroup" style="display:none;">
-      <label>Cue Type</label>
-      <select id="editCue">
-        <option value="OC">Onboard Cues (OC)</option>
-        <option value="QP">Quick Plug (QP)</option>
+      <label>Equipment</label>
+      <select id="editEquipPick">
+        <option value="">Select equipment...</option>
+        <optgroup label="COBRA Modules — Onboard Cues (OC)">
+          <option value="module|18M|OC">18M Module (18-cue) — OC</option>
+          <option value="module|36M|OC">36M Module (36-cue) — OC</option>
+          <option value="module|72M|OC">72M Module (72-cue) — OC</option>
+        </optgroup>
+        <optgroup label="COBRA Modules — Quick Plug (QP)">
+          <option value="module|18M|QP">18M Module (18-cue) — QP</option>
+          <option value="module|36M|QP">36M Module (36-cue) — QP</option>
+          <option value="module|72M|QP">72M Module (72-cue) — QP</option>
+        </optgroup>
+        <optgroup label="COBRA Controllers">
+          <option value="controller|18R2 Command Center|">18R2 Command Center</option>
+          <option value="controller|18R2 Controller|">18R2 Controller</option>
+        </optgroup>
+        <optgroup label="Accessories / Slats / Cables">
+          <option value="accessory|Mini Slats w/ Case|">Mini Slats w/ Case</option>
+          <option value="accessory|Slats|">Slats</option>
+          <option value="accessory|M-Cable|">M-Cable</option>
+          <option value="accessory|50' Cables|">50' Cables</option>
+        </optgroup>
+        <optgroup label="Fireball Tubes">
+          <option value="fireball|Fireball Tubes|">Fireball Tubes</option>
+        </optgroup>
+        <optgroup label="Craigco Racks">
+          <option value="rack|Craigco 35-shot|">Craigco 35-shot</option>
+          <option value="rack|Craigco 18-shot 60mm|">Craigco 18-shot 60mm</option>
+          <option value="rack|Craigco 2.5&quot; (rack of 12)|">Craigco 2.5" (rack of 12)</option>
+          <option value="rack|Craigco 3&quot; (rack of 12)|">Craigco 3" (rack of 12)</option>
+          <option value="rack|Craigco 4&quot; (rack of 8)|">Craigco 4" (rack of 8)</option>
+        </optgroup>
       </select>
     </div>
     <div class="form-group">
@@ -1131,7 +1148,6 @@ function renderEquipment(filter) {
     m.modules.forEach(mod => {
       const isQP = mod.cue === 'QP';
       const cueColor = isQP ? 'var(--qp-color)' : 'var(--oc-color)';
-      const cueBg = isQP ? 'rgba(66,165,245,0.15)' : 'rgba(232,112,10,0.15)';
       const cueLabel = isQP ? 'Quick Plug' : 'Onboard Cues';
       html += '<div class="equip-item" style="border-left:3px solid ' + cueColor + ';">' +
         '<div class="equip-item-left">' +
@@ -1141,16 +1157,25 @@ function renderEquipment(filter) {
         '<span class="type-tag ' + mod.cue.toLowerCase() + '" style="font-size:10px;padding:3px 8px;">' + mod.cue + '</span>' +
         '<span style="color:' + cueColor + ';font-weight:600;">' + cueLabel + '</span>' +
         '</div></div></div>' +
-        '<div class="equip-item-qty">' + mod.qty + '</div></div>';
+        '<div class="equip-item-actions">' +
+        '<div class="equip-item-qty">' + mod.qty + '</div>' +
+        '<button class="eq-edit-btn" onclick="event.stopPropagation();editEquipItem(\'' + key + '\',\'module\',\'' + mod.type + '\',\'' + mod.cue + '\',' + mod.qty + ')" title="Edit">&#x270F;</button>' +
+        '<button class="eq-del-btn" onclick="event.stopPropagation();deleteEquipItem(\'' + key + '\',\'module\',\'' + mod.type + '\',\'' + mod.cue + '\')" title="Remove">&#x2716;</button>' +
+        '</div></div>';
     });
 
     m.accessories.forEach(acc => {
+      var accEsc = acc.name.replace(/'/g,"\\'");
       html += '<div class="equip-item">' +
         '<div class="equip-item-left">' +
         '<div class="equip-item-icon accessory">&#x1F527;</div>' +
         '<div><div class="equip-item-name">' + acc.name + '</div>' +
         '<div class="equip-item-sub">Accessory</div></div></div>' +
-        '<div class="equip-item-qty">' + acc.qty + '</div></div>';
+        '<div class="equip-item-actions">' +
+        '<div class="equip-item-qty">' + acc.qty + '</div>' +
+        '<button class="eq-edit-btn" onclick="event.stopPropagation();editEquipItem(\'' + key + '\',\'accessory\',\'' + accEsc + '\',\'\',' + acc.qty + ')" title="Edit">&#x270F;</button>' +
+        '<button class="eq-del-btn" onclick="event.stopPropagation();deleteEquipItem(\'' + key + '\',\'accessory\',\'' + accEsc + '\',\'\')" title="Remove">&#x2716;</button>' +
+        '</div></div>';
     });
 
     if (m.fireballTubes > 0) {
@@ -1159,16 +1184,25 @@ function renderEquipment(filter) {
         '<div class="equip-item-icon tube">&#x1F525;</div>' +
         '<div><div class="equip-item-name">Fireball Tubes</div>' +
         '<div class="equip-item-sub">Assorted sizes</div></div></div>' +
-        '<div class="equip-item-qty">' + m.fireballTubes + '</div></div>';
+        '<div class="equip-item-actions">' +
+        '<div class="equip-item-qty">' + m.fireballTubes + '</div>' +
+        '<button class="eq-edit-btn" onclick="event.stopPropagation();editEquipItem(\'' + key + '\',\'fireball\',\'Fireball Tubes\',\'\',' + m.fireballTubes + ')" title="Edit">&#x270F;</button>' +
+        '<button class="eq-del-btn" onclick="event.stopPropagation();deleteEquipItem(\'' + key + '\',\'fireball\',\'Fireball Tubes\',\'\')" title="Remove">&#x2716;</button>' +
+        '</div></div>';
     }
 
     m.racks.forEach(r => {
+      var rEsc = r.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
       html += '<div class="equip-item">' +
         '<div class="equip-item-left">' +
         '<div class="equip-item-icon rack">&#x1F9F1;</div>' +
         '<div><div class="equip-item-name">' + r.name + '</div>' +
         '<div class="equip-item-sub">Craigco Rack</div></div></div>' +
-        '<div class="equip-item-qty">' + r.qty + '</div></div>';
+        '<div class="equip-item-actions">' +
+        '<div class="equip-item-qty">' + r.qty + '</div>' +
+        '<button class="eq-edit-btn" onclick="event.stopPropagation();editEquipItem(\'' + key + '\',\'rack\',\'' + rEsc + '\',\'\',' + r.qty + ')" title="Edit">&#x270F;</button>' +
+        '<button class="eq-del-btn" onclick="event.stopPropagation();deleteEquipItem(\'' + key + '\',\'rack\',\'' + rEsc + '\',\'\')" title="Remove">&#x2716;</button>' +
+        '</div></div>';
     });
 
     if (totalMods === 0 && !m.fireballTubes && !m.racks.length && !m.accessories.length) {
@@ -1367,13 +1401,20 @@ function renderInventory() {
     tabsEl.style.display = 'none';
   }
 
-  // Upload section — always show but smaller if we have data
+  // Upload section — always visible
   var uploadEl = document.getElementById('invUploadSection');
+  var uploadZone = document.getElementById('invUploadZone');
   if (hasCats) {
-    uploadEl.querySelector('.inv-upload-area').style.padding = '14px 16px';
-    uploadEl.querySelector('[style*="font-size:32px"]').style.display = 'none';
-    uploadEl.querySelector('[style*="font-size:14px"]').textContent = 'Upload New / Updated Inventory';
-    uploadEl.querySelector('[style*="font-size:12px"]').textContent = 'Re-upload to replace current inventory data.';
+    uploadZone.innerHTML = '<div style="display:flex;align-items:center;gap:12px;">' +
+      '<div style="font-size:24px;opacity:0.5;">&#x1F4C2;</div>' +
+      '<div><div style="font-size:14px;font-weight:700;">Upload New / Updated Inventory</div>' +
+      '<div style="font-size:12px;color:var(--ss-text-muted);">Drop a .xlsx file here or tap to browse. Replaces current data.</div></div></div>' +
+      '<input type="file" id="invFileInput" accept=".xlsx,.xls" onchange="handleInventoryUpload(this)">';
+  } else {
+    uploadZone.innerHTML = '<div style="font-size:32px;margin-bottom:8px;opacity:0.4;">&#x1F4CB;</div>' +
+      '<div style="font-size:14px;font-weight:700;margin-bottom:4px;">Upload Inventory Spreadsheet</div>' +
+      '<div style="font-size:12px;color:var(--ss-text-muted);line-height:1.5;">Drop your .xlsx file here or tap to browse.<br>Uses the Solid Second Inventory Template format.</div>' +
+      '<input type="file" id="invFileInput" accept=".xlsx,.xls" onchange="handleInventoryUpload(this)">';
   }
 
   renderInvProducts();
@@ -1517,75 +1558,23 @@ function runPlanner() {
 // (inv tabs removed — replaced by category tabs above)
 
 // ===== EQUIPMENT MODAL LOGIC =====
-const EQUIP_ITEMS = {
-  module: [
-    { value: '18M', label: '18M Module (18-cue)' },
-    { value: '36M', label: '36M Module (36-cue)' },
-    { value: '72M', label: '72M Module (72-cue)' }
-  ],
-  controller: [
-    { value: '18R2 Command Center', label: '18R2 Command Center' },
-    { value: '18R2 Controller', label: '18R2 Controller' }
-  ],
-  accessory: [
-    { value: 'Mini Slats w/ Case', label: 'Mini Slats w/ Case' },
-    { value: 'Slats', label: 'Slats' },
-    { value: 'M-Cable', label: 'M-Cable' },
-    { value: "50' Cables", label: "50' Cables" },
-    { value: 'other', label: 'Other (type below)' }
-  ],
-  fireball: [
-    { value: 'Fireball Tubes', label: 'Fireball Tubes' }
-  ],
-  rack: [
-    { value: 'Craigco 35-shot', label: 'Craigco 35-shot' },
-    { value: 'Craigco 18-shot 60mm', label: 'Craigco 18-shot 60mm' },
-    { value: 'Craigco 2.5" (rack of 12)', label: 'Craigco 2.5" (rack of 12)' },
-    { value: 'Craigco 3" (rack of 12)', label: 'Craigco 3" (rack of 12)' },
-    { value: 'Craigco 4" (rack of 8)', label: 'Craigco 4" (rack of 8)' }
-  ]
-};
-
-function updateEditItem() {
-  var type = document.getElementById('editType').value;
-  var sel = document.getElementById('editItem');
-  var cueGroup = document.getElementById('editCueGroup');
-
-  if (!type) {
-    sel.innerHTML = '<option value="">Select type first...</option>';
-    cueGroup.style.display = 'none';
-    return;
-  }
-
-  var items = EQUIP_ITEMS[type] || [];
-  sel.innerHTML = '<option value="">Select item...</option>' +
-    items.map(function(it) { return '<option value="' + it.value + '">' + it.label + '</option>'; }).join('');
-
-  // Show cue type selector only for modules
-  cueGroup.style.display = type === 'module' ? 'block' : 'none';
-}
-
-function updateEditCue() {
-  // placeholder for future logic
-}
-
 function saveEquipment() {
   var memberKey = document.getElementById('editMember').value;
-  var type = document.getElementById('editType').value;
-  var item = document.getElementById('editItem').value;
+  var pick = document.getElementById('editEquipPick').value;
   var qty = parseInt(document.getElementById('editQty').value) || 0;
 
-  if (!memberKey || !type || !item || qty <= 0) {
+  if (!memberKey || !pick || qty <= 0) {
     showToast('Please fill in all fields');
     return;
   }
+
+  var parts = pick.split('|'); // type|item|cue
+  var type = parts[0], item = parts[1], cue = parts[2] || '';
 
   var member = CREW[memberKey];
   if (!member) { showToast('Invalid crew member'); return; }
 
   if (type === 'module') {
-    var cue = document.getElementById('editCue').value;
-    // Check if this module/cue combo already exists
     var existing = member.modules.find(function(m) { return m.type === item && m.cue === cue; });
     if (existing) {
       existing.qty = qty;
@@ -1610,21 +1599,59 @@ function saveEquipment() {
     }
   }
 
-  // Re-render everything
+  refreshEquipViews();
+  closeModal('addEquipModal');
+  showToast(CREW[memberKey].name + ' — ' + item + ' updated to ' + qty);
+  document.getElementById('editEquipPick').value = '';
+  document.getElementById('editQty').value = '';
+}
+
+function refreshEquipViews() {
   document.getElementById('stat-modules').textContent = getAllModules();
   document.getElementById('stat-tubes').textContent = getAllTubes();
   renderCrewSidebar();
   renderEquipment(currentFilter);
   renderMembers();
+}
 
-  closeModal('addEquipModal');
-  showToast(CREW[memberKey].name + ' — ' + item + ' updated to ' + qty);
+// Edit existing equipment — opens modal pre-filled
+function editEquipItem(memberKey, type, item, cue, currentQty) {
+  openModal('addEquipModal');
+  document.getElementById('editMember').value = memberKey;
+  var pickVal = type + '|' + item + '|' + (cue || '');
+  document.getElementById('editEquipPick').value = pickVal;
+  document.getElementById('editQty').value = currentQty;
+}
 
-  // Reset form
-  document.getElementById('editType').value = '';
-  document.getElementById('editItem').innerHTML = '<option value="">Select type first...</option>';
-  document.getElementById('editCueGroup').style.display = 'none';
-  document.getElementById('editQty').value = '';
+// Delete equipment item
+function deleteEquipItem(memberKey, type, item, cue) {
+  var member = CREW[memberKey];
+  if (!member) return;
+  var label = item + (cue ? ' (' + cue + ')' : '');
+  if (!confirm('Remove ' + label + ' from ' + member.name + '?')) return;
+
+  if (type === 'module') {
+    member.modules = member.modules.filter(function(m) { return !(m.type === item && m.cue === cue); });
+  } else if (type === 'controller' || type === 'accessory') {
+    member.accessories = member.accessories.filter(function(a) { return a.name !== item; });
+  } else if (type === 'fireball') {
+    member.fireballTubes = 0;
+  } else if (type === 'rack') {
+    member.racks = member.racks.filter(function(r) { return r.name !== item; });
+  }
+
+  refreshEquipViews();
+  showToast(label + ' removed from ' + member.name);
+}
+
+// Clear entire inventory
+function clearInventory() {
+  if (!confirm('Clear ALL inventory data? This cannot be undone.')) return;
+  inventoryData = {};
+  localStorage.removeItem('ss_inventory');
+  currentInvCat = 'all';
+  renderInventory();
+  showToast('Inventory cleared');
 }
 
 function populateEditMembers() {
