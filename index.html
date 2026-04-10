@@ -6,7 +6,10 @@
 <title>Solid Second — Crew Equipment Hub</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Solid Second">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A0A0A">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <style>
   :root {
     --ss-orange: #E8700A;
@@ -2012,13 +2015,12 @@ function parseFinale3dLines(pageLines, mode) {
 }
 
 // Auto-categorize items based on description and part number
-// Show warning when 1.3G items are detected in an upload
+// Show info note when 1.3G items are detected in an upload
 function show13Warning(items13) {
   var html = '<div class="modal-handle"></div>';
-  html += '<h2 style="color:#EF5350;">&#x26A0; 1.3G Items Skipped</h2>';
-  html += '<div style="font-size:13px;color:var(--ss-text-muted);margin-bottom:14px;">This app currently handles <strong>1.4G and 1.4G Pro</strong> consumer fireworks only. 1.3G products are federally regulated and were <strong>not</strong> processed.</div>';
-  html += '<div style="background:rgba(198,40,40,0.12);border:1px solid rgba(198,40,40,0.3);border-radius:8px;padding:12px;margin-bottom:14px;max-height:300px;overflow-y:auto;">';
-  html += '<div style="font-weight:700;margin-bottom:8px;font-size:13px;">' + items13.length + ' items skipped:</div>';
+  html += '<h2 style="color:var(--ss-orange);">&#x1F4E6; 1.3G Regulated Container</h2>';
+  html += '<div style="font-size:13px;color:var(--ss-text-muted);margin-bottom:14px;">The following <strong>' + items13.length + ' item' + (items13.length > 1 ? 's' : '') + '</strong> on this pull sheet come from your <strong>1.3G regulated container</strong>, which is tracked separately from your 1.4G inventory.</div>';
+  html += '<div style="background:rgba(232,112,10,0.10);border:1px solid rgba(232,112,10,0.25);border-radius:8px;padding:12px;margin-bottom:14px;max-height:300px;overflow-y:auto;">';
   items13.forEach(function(it) {
     html += '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px;">';
     html += '<div>' + it.name + (it.partNum ? ' <span style="color:var(--ss-orange);">' + it.partNum + '</span>' : '') + '</div>';
@@ -2026,8 +2028,8 @@ function show13Warning(items13) {
     html += '</div>';
   });
   html += '</div>';
-  html += '<div style="font-size:11px;color:var(--ss-text-muted);margin-bottom:14px;">1.3G tracking may be added in a future update.</div>';
-  html += '<div class="form-actions"><button class="btn-modal-primary" onclick="closeModal(\'warn13Modal\')">Got It</button></div>';
+  html += '<div style="font-size:12px;color:var(--ss-text-muted);margin-bottom:14px;">These items weren\'t deducted from your 1.4G inventory. 1.3G inventory tracking is on the roadmap.</div>';
+  html += '<div class="form-actions"><button class="btn-modal-primary" onclick="closeModal(\'warn13Modal\')">OK</button></div>';
 
   var modal = document.getElementById('warn13Modal');
   if (!modal) {
