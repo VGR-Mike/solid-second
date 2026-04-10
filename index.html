@@ -1469,11 +1469,17 @@ function handleInventoryUpload(input) {
 }
 
 function handleExcelUpload(file) {
+  var hasExisting = Object.keys(inventoryData).length > 0;
+  var mergeMode = false;
+  if (hasExisting) {
+    mergeMode = confirm('You have existing inventory.\n\nOK = Merge new items into existing inventory\nCancel = Replace all inventory with this file');
+  }
+
   var reader = new FileReader();
   reader.onload = function(e) {
     try {
       var wb = XLSX.read(e.target.result, { type: 'array' });
-      inventoryData = {};
+      var newData = {};
       wb.SheetNames.forEach(function(sheetName) {
         var ws = wb.Sheets[sheetName];
         var rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
@@ -1510,11 +1516,36 @@ function handleExcelUpload(file) {
           items.push({ name:name, partNum:partNum, brand:brand, size:size, qty:qty, videoLink:videoLink, duration:duration, liftTime:liftTime });
         }
         sortInventoryItems(items);
-        if (items.length > 0) inventoryData[sheetName] = items;
+        if (items.length > 0) newData[sheetName] = items;
       });
+
+      if (mergeMode) {
+        // Merge: add new items into existing, update qty for matching part numbers
+        Object.keys(newData).forEach(function(cat) {
+          if (!inventoryData[cat]) { inventoryData[cat] = []; }
+          newData[cat].forEach(function(newItem) {
+            var found = false;
+            if (newItem.partNum) {
+              for (var i = 0; i < inventoryData[cat].length; i++) {
+                if (inventoryData[cat][i].partNum === newItem.partNum) {
+                  inventoryData[cat][i].qty += newItem.qty;
+                  found = true;
+                  break;
+                }
+              }
+            }
+            if (!found) inventoryData[cat].push(newItem);
+          });
+          sortInventoryItems(inventoryData[cat]);
+        });
+        showToast('Inventory merged — now ' + getTotalInvItems() + ' products');
+      } else {
+        inventoryData = newData;
+        showToast('Inventory loaded: ' + getTotalInvItems() + ' products');
+      }
+
       saveInventoryToStorage();
       renderInventory();
-      showToast('Inventory loaded: ' + getTotalInvItems() + ' products');
     } catch(err) {
       showToast('Error reading file: ' + err.message);
     }
