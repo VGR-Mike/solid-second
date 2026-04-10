@@ -637,6 +637,8 @@
   .btn-export:hover { border-color: var(--ss-orange); color: var(--ss-orange); }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 </head>
 <body>
 
@@ -831,8 +833,8 @@
     <div class="inv-upload-area" id="invUploadZone">
       <div style="font-size:32px;margin-bottom:8px;opacity:0.4;">&#x1F4CB;</div>
       <div style="font-size:14px;font-weight:700;margin-bottom:4px;">Upload Inventory Spreadsheet</div>
-      <div style="font-size:12px;color:var(--ss-text-muted);line-height:1.5;">Drop your .xlsx file here or tap to browse.<br>Uses the Solid Second Inventory Template format.</div>
-      <input type="file" id="invFileInput" accept=".xlsx,.xls" onchange="handleInventoryUpload(this)">
+      <div style="font-size:12px;color:var(--ss-text-muted);line-height:1.5;">Drop your .xlsx or supplier order .pdf here, or tap to browse.<br>Supports Solid Second Inventory Template &amp; Casabella-style PDFs.</div>
+      <input type="file" id="invFileInput" accept=".xlsx,.xls,.pdf" onchange="handleInventoryUpload(this)">
     </div>
   </div>
 </div>
@@ -1423,9 +1425,50 @@ function saveInventoryToStorage() {
   try { localStorage.setItem('ss_inventory', JSON.stringify(inventoryData)); } catch(e) {}
 }
 
+// Brand auto-detection from part number prefix
+function detectBrand(partNum) {
+  if (!partNum) return '';
+  var pn = partNum.toUpperCase();
+  if (pn.match(/^PFX/)) return 'Dominator';
+  if (pn.match(/^PSS/)) return 'Dominator';
+  if (pn.match(/^PSC/)) return 'Dominator';
+  if (pn.match(/^PCA/)) return 'Dominator';
+  if (pn.match(/^PM30/)) return 'Dominator';
+  if (pn.match(/^RA/)) return 'Raccoon';
+  if (pn.match(/^WPL/)) return 'Wizard';
+  if (pn.match(/^JLP/)) return 'Riakeo';
+  if (pn.match(/^BF/)) return 'BoomFire';
+  if (pn.match(/^WR/)) return 'World Class';
+  if (pn.match(/^SP76/)) return "Spirit of '76";
+  return '';
+}
+
+function sortInventoryItems(items) {
+  items.sort(function(a,b) {
+    var ba = (a.brand || 'zzz').toLowerCase(), bb = (b.brand || 'zzz').toLowerCase();
+    if (ba !== bb) return ba < bb ? -1 : 1;
+    var pa = (a.partNum || 'zzz').toLowerCase(), pb = (b.partNum || 'zzz').toLowerCase();
+    return pa < pb ? -1 : pa > pb ? 1 : 0;
+  });
+  return items;
+}
+
 function handleInventoryUpload(input) {
   if (!input.files || !input.files[0]) return;
   var file = input.files[0];
+  var ext = file.name.split('.').pop().toLowerCase();
+
+  if (ext === 'pdf') {
+    handlePdfUpload(file);
+  } else if (ext === 'xlsx' || ext === 'xls') {
+    handleExcelUpload(file);
+  } else {
+    showToast('Unsupported file type. Use .xlsx or .pdf');
+  }
+  input.value = '';
+}
+
+function handleExcelUpload(file) {
   var reader = new FileReader();
   reader.onload = function(e) {
     try {
@@ -1435,7 +1478,6 @@ function handleInventoryUpload(input) {
         var ws = wb.Sheets[sheetName];
         var rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
         var items = [];
-        // Find header row (look for 'Product Name' or 'Description')
         var headerIdx = -1;
         for (var i = 0; i < Math.min(rows.length, 5); i++) {
           var row = rows[i];
@@ -1444,7 +1486,7 @@ function handleInventoryUpload(input) {
             if (first === 'product name' || first === 'description') { headerIdx = i; break; }
           }
         }
-        if (headerIdx === -1) headerIdx = 1; // default: row 2 is header
+        if (headerIdx === -1) headerIdx = 1;
 
         for (var r = headerIdx + 1; r < rows.length; r++) {
           var row = rows[r];
@@ -1458,22 +1500,16 @@ function handleInventoryUpload(input) {
           var duration = String(row[6] || '').trim();
           var liftTime = String(row[7] || '').trim();
           if (qty <= 0) continue;
-          // Clean up 'undefined' or 'nan'
           if (partNum === 'UNDEFINED' || partNum === 'NAN') partNum = '';
           if (brand === 'undefined' || brand === 'nan') brand = '';
           if (size === 'undefined' || size === 'nan') size = '';
           if (videoLink === 'undefined' || videoLink === 'nan') videoLink = '';
           if (duration === 'undefined' || duration === 'nan') duration = '';
           if (liftTime === 'undefined' || liftTime === 'nan') liftTime = '';
+          if (!brand) brand = detectBrand(partNum);
           items.push({ name:name, partNum:partNum, brand:brand, size:size, qty:qty, videoLink:videoLink, duration:duration, liftTime:liftTime });
         }
-        // Sort by brand then part number
-        items.sort(function(a,b) {
-          var ba = (a.brand || 'zzz').toLowerCase(), bb = (b.brand || 'zzz').toLowerCase();
-          if (ba !== bb) return ba < bb ? -1 : 1;
-          var pa = (a.partNum || 'zzz').toLowerCase(), pb = (b.partNum || 'zzz').toLowerCase();
-          return pa < pb ? -1 : pa > pb ? 1 : 0;
-        });
+        sortInventoryItems(items);
         if (items.length > 0) inventoryData[sheetName] = items;
       });
       saveInventoryToStorage();
@@ -1484,7 +1520,200 @@ function handleInventoryUpload(input) {
     }
   };
   reader.readAsArrayBuffer(file);
-  input.value = '';
+}
+
+// ===== PDF SUPPLIER ORDER PARSER =====
+function handlePdfUpload(file) {
+  if (!window.pdfjsLib) {
+    showToast('PDF library not loaded. Check your internet connection.');
+    return;
+  }
+  showToast('Reading PDF...');
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var typedArr = new Uint8Array(e.target.result);
+    pdfjsLib.getDocument(typedArr).promise.then(function(pdf) {
+      var pagePromises = [];
+      for (var p = 1; p <= pdf.numPages; p++) {
+        pagePromises.push(pdf.getPage(p).then(function(page) {
+          return page.getTextContent().then(function(tc) {
+            // Group text items by Y position to reconstruct rows
+            var lines = {};
+            tc.items.forEach(function(item) {
+              var y = Math.round(item.transform[5]); // Y position
+              if (!lines[y]) lines[y] = [];
+              lines[y].push({ x: item.transform[4], text: item.str.trim() });
+            });
+            return lines;
+          });
+        }));
+      }
+      Promise.all(pagePromises).then(function(pageLines) {
+        parsePdfOrderLines(pageLines, file.name);
+      });
+    }).catch(function(err) {
+      showToast('Error reading PDF: ' + err.message);
+    });
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function parsePdfOrderLines(pageLines, fileName) {
+  var allItems = [];
+  // Known part number prefixes for supplier orders
+  var partPrefixes = /^(PFX|PSS|PSC|PCA|PM\d|RA\d|WPL|JLP|BF|WR|SP76)/i;
+
+  pageLines.forEach(function(lines) {
+    // Sort Y positions top to bottom (higher Y = higher on page in PDF coords)
+    var yPositions = Object.keys(lines).map(Number).sort(function(a,b) { return b - a; });
+
+    yPositions.forEach(function(y) {
+      var cells = lines[y].sort(function(a,b) { return a.x - b.x; });
+      var rowText = cells.map(function(c) { return c.text; }).filter(function(t) { return t.length > 0; });
+
+      if (rowText.length < 3) return; // skip short rows
+
+      var firstCell = rowText[0];
+      // Check if first cell looks like a product ID
+      if (!partPrefixes.test(firstCell) && !firstCell.match(/^[A-Z][a-z].*[A-Z]/)) {
+        // Also check for items like "Take me to your Leader" that have no standard prefix
+        // but have a description + cs + number pattern
+        var joined = rowText.join(' ');
+        if (joined.indexOf(' cs ') === -1) return;
+        // Non-prefixed item: try description + packing format
+        var csIdx = -1;
+        for (var i = 0; i < rowText.length; i++) {
+          if (rowText[i].match(/^cs$/i)) { csIdx = i; break; }
+          if (rowText[i].match(/^cs\s*\d/i)) { csIdx = i; break; }
+        }
+        if (csIdx < 1) return;
+        var desc = rowText.slice(0, csIdx).join(' ');
+        var packStr = rowText[csIdx].replace(/^cs\s*/i, '');
+        if (!packStr && csIdx + 1 < rowText.length) packStr = rowText[csIdx + 1];
+        var pack = parseInt(packStr) || 0;
+        var qtyIdx = csIdx + (packStr === rowText[csIdx].replace(/^cs\s*/i,'') ? 1 : 2);
+        var qty = parseInt(rowText[qtyIdx]) || 0;
+        if (qty > 0 && desc) {
+          var totalPieces = qty * (pack || 1);
+          allItems.push({ name: desc, partNum: '', brand: '', size: pack ? pack + '/cs' : '', qty: totalPieces, videoLink: '', duration: '', liftTime: '' });
+        }
+        return;
+      }
+
+      // Standard row: Product ID is first cell
+      var productId = firstCell.toUpperCase();
+      // Find "cs" to split description from packing
+      var csIdx = -1;
+      for (var i = 1; i < rowText.length; i++) {
+        if (rowText[i].match(/^cs$/i)) { csIdx = i; break; }
+        if (rowText[i].match(/^cs\s*\d/i)) { csIdx = i; break; }
+      }
+      if (csIdx < 2) return; // no description found
+
+      var description = rowText.slice(1, csIdx).join(' ');
+      var packStr = rowText[csIdx].replace(/^cs\s*/i, '');
+      if (!packStr && csIdx + 1 < rowText.length) packStr = rowText[csIdx + 1];
+      var pack = parseInt(packStr) || 0;
+      // Quantity is after packing
+      var qtyIdx = csIdx + 1;
+      if (packStr === '') qtyIdx = csIdx + 2;
+      // Find the quantity — it's usually a small number (1-10)
+      var qty = 0;
+      for (var j = qtyIdx; j < Math.min(qtyIdx + 2, rowText.length); j++) {
+        var n = parseInt(rowText[j]);
+        if (!isNaN(n) && n > 0 && n < 500) { qty = n; break; }
+      }
+
+      if (qty > 0) {
+        var totalPieces = qty * (pack || 1);
+        var brand = detectBrand(productId);
+        allItems.push({
+          name: description,
+          partNum: productId,
+          brand: brand,
+          size: pack ? pack + '/cs' : '',
+          qty: totalPieces,
+          videoLink: '', duration: '', liftTime: ''
+        });
+      }
+    });
+  });
+
+  if (allItems.length === 0) {
+    showToast('No products found in PDF. Is this a supplier order?');
+    return;
+  }
+
+  // Auto-categorize into inventory categories based on description/part number
+  var categorized = {};
+  allItems.forEach(function(item) {
+    var cat = categorizeItem(item);
+    if (!categorized[cat]) categorized[cat] = [];
+    categorized[cat].push(item);
+  });
+
+  // Sort each category
+  Object.keys(categorized).forEach(function(cat) { sortInventoryItems(categorized[cat]); });
+
+  // Ask user whether to merge or replace
+  var hasExisting = Object.keys(inventoryData).length > 0;
+  if (hasExisting) {
+    var merge = confirm('You have existing inventory.\n\nOK = Merge PDF items into existing inventory\nCancel = Replace all inventory with PDF items');
+    if (merge) {
+      // Merge into existing categories
+      Object.keys(categorized).forEach(function(cat) {
+        if (!inventoryData[cat]) inventoryData[cat] = [];
+        categorized[cat].forEach(function(newItem) {
+          // Check if part number already exists — update qty if so
+          var found = false;
+          if (newItem.partNum) {
+            for (var i = 0; i < inventoryData[cat].length; i++) {
+              if (inventoryData[cat][i].partNum === newItem.partNum) {
+                inventoryData[cat][i].qty += newItem.qty;
+                found = true;
+                break;
+              }
+            }
+          }
+          if (!found) inventoryData[cat].push(newItem);
+        });
+        sortInventoryItems(inventoryData[cat]);
+      });
+    } else {
+      inventoryData = categorized;
+    }
+  } else {
+    inventoryData = categorized;
+  }
+
+  saveInventoryToStorage();
+  renderInventory();
+  showToast('PDF imported: ' + allItems.length + ' products from supplier order');
+}
+
+// Auto-categorize items based on description and part number
+function categorizeItem(item) {
+  var desc = (item.name + ' ' + item.partNum).toLowerCase();
+  // 1.3/1.4 shells
+  if (desc.match(/shell|62mm|pro1\.4|1\.4|girandola/)) return '1.3';
+  // Comets
+  if (desc.match(/comet|meteor|tiger tail/)) return 'Comets';
+  // Mines
+  if (desc.match(/mine/)) return 'Mines';
+  // Slices / zippers
+  if (desc.match(/slice|zipper/)) return 'Slices';
+  // Fountains / strobes
+  if (desc.match(/fountain|strobe waterfall/)) return 'Fountain-Strobes';
+  // 500G cakes
+  if (desc.match(/shot/) && parseInt(desc) >= 100) return '500G';
+  // 200G
+  if (desc.match(/200g|200 gram/)) return '200G';
+  // Single shots (PSS prefix or single-shot items, small cakes)
+  if (item.partNum.match(/^PSC/i)) return '500G';
+  if (item.partNum.match(/^PCA/i)) return '500G';
+  if (desc.match(/shot/) && parseInt(desc) < 100) return '200G';
+  // Default to Single Shots
+  return 'Single Shots';
 }
 
 function getTotalInvItems() {
@@ -1546,13 +1775,13 @@ function renderInventory() {
     uploadZone.innerHTML = '<div style="display:flex;align-items:center;gap:12px;">' +
       '<div style="font-size:24px;opacity:0.5;">&#x1F4C2;</div>' +
       '<div><div style="font-size:14px;font-weight:700;">Upload New / Updated Inventory</div>' +
-      '<div style="font-size:12px;color:var(--ss-text-muted);">Drop a .xlsx file here or tap to browse. Replaces current data.</div></div></div>' +
-      '<input type="file" id="invFileInput" accept=".xlsx,.xls" onchange="handleInventoryUpload(this)">';
+      '<div style="font-size:12px;color:var(--ss-text-muted);">Drop a .xlsx or supplier .pdf here. Replaces or merges into current data.</div></div></div>' +
+      '<input type="file" id="invFileInput" accept=".xlsx,.xls,.pdf" onchange="handleInventoryUpload(this)">';
   } else {
     uploadZone.innerHTML = '<div style="font-size:32px;margin-bottom:8px;opacity:0.4;">&#x1F4CB;</div>' +
       '<div style="font-size:14px;font-weight:700;margin-bottom:4px;">Upload Inventory Spreadsheet</div>' +
-      '<div style="font-size:12px;color:var(--ss-text-muted);line-height:1.5;">Drop your .xlsx file here or tap to browse.<br>Uses the Solid Second Inventory Template format.</div>' +
-      '<input type="file" id="invFileInput" accept=".xlsx,.xls" onchange="handleInventoryUpload(this)">';
+      '<div style="font-size:12px;color:var(--ss-text-muted);line-height:1.5;">Drop your .xlsx or supplier .pdf here, or tap to browse.<br>Supports inventory templates &amp; Casabella-style supplier orders.</div>' +
+      '<input type="file" id="invFileInput" accept=".xlsx,.xls,.pdf" onchange="handleInventoryUpload(this)">';
   }
 
   renderInvProducts();
