@@ -806,7 +806,7 @@
     </div>
     <div class="form-group">
       <label>Equipment</label>
-      <select id="editEquipPick">
+      <select id="editEquipPick" onchange="document.getElementById('customEquipGroup').style.display=this.value==='custom||'?'block':'none';">
         <option value="">Select equipment...</option>
         <optgroup label="COBRA Modules — Onboard Cues (OC)">
           <option value="module|18M|OC">18M Module (18-cue) — OC</option>
@@ -838,7 +838,14 @@
           <option value="rack|Craigco 3&quot; (rack of 12)|">Craigco 3" (rack of 12)</option>
           <option value="rack|Craigco 4&quot; (rack of 8)|">Craigco 4" (rack of 8)</option>
         </optgroup>
+        <optgroup label="Custom">
+          <option value="custom||">Other (type your own)</option>
+        </optgroup>
       </select>
+    </div>
+    <div class="form-group" id="customEquipGroup" style="display:none;">
+      <label>Custom Equipment Name</label>
+      <input type="text" id="customEquipName" placeholder="e.g. Quick Fuse, Mortar Rack, etc.">
     </div>
     <div class="form-group">
       <label>Quantity</label>
@@ -847,6 +854,48 @@
     <div class="form-actions">
       <button class="btn-modal-secondary" onclick="closeModal('addEquipModal')">Cancel</button>
       <button class="btn-modal-primary" onclick="saveEquipment()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD EVENT MODAL -->
+<div class="modal-overlay" id="addEventModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <h2>Add Event</h2>
+    <div class="form-group">
+      <label>Event Name</label>
+      <input type="text" id="evtName" placeholder="e.g. Memorial Day Shoot">
+    </div>
+    <div class="form-group">
+      <label>Date</label>
+      <input type="date" id="evtDate">
+    </div>
+    <div class="form-group">
+      <label>Description / Location</label>
+      <input type="text" id="evtSub" placeholder="e.g. Jim's property — MoPyro event">
+    </div>
+    <div class="form-group">
+      <label>Lead</label>
+      <select id="evtLead">
+        <option value="">Select lead...</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Load-In Time</label>
+      <input type="text" id="evtLoadIn" placeholder="e.g. 4:00 PM">
+    </div>
+    <div class="form-group">
+      <label>Shoot Time</label>
+      <input type="text" id="evtShootTime" placeholder="e.g. ~9:00 PM">
+    </div>
+    <div class="form-group">
+      <label>Crew Going</label>
+      <div id="evtCrewChecks" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-modal-secondary" onclick="closeModal('addEventModal')">Cancel</button>
+      <button class="btn-modal-primary" onclick="saveEvent()">Add Event</button>
     </div>
   </div>
 </div>
@@ -1099,7 +1148,7 @@ document.querySelectorAll('.modal-overlay').forEach(o => {
 function handleFab() {
   const page = document.getElementById('fabBtn').dataset.page || 'home';
   if (page === 'equipment' || page === 'members') openModal('addEquipModal');
-  else if (page === 'events') showToast('New Event form coming soon');
+  else if (page === 'events') { populateEventModal(); openModal('addEventModal'); }
   else openModal('addEquipModal');
 }
 
@@ -1387,12 +1436,18 @@ function renderInventory() {
     statsEl.innerHTML = '';
   }
 
-  // Category tabs
+  // Category tabs — no "All" tab, default to first category
   var tabsEl = document.getElementById('invCatTabs');
   if (hasCats) {
-    var tabsHtml = '<button class="inv-cat-tab' + (currentInvCat === 'all' ? ' active' : '') + '" onclick="switchInvCat(this,\'all\')">All<span class="cat-count">' + getTotalInvItems() + '</span></button>';
-    Object.keys(inventoryData).forEach(function(cat) {
-      tabsHtml += '<button class="inv-cat-tab' + (currentInvCat === cat ? ' active' : '') + '" onclick="switchInvCat(this,\'' + cat.replace(/'/g,"\\'") + '\')">' + cat + '<span class="cat-count">' + inventoryData[cat].length + '</span></button>';
+    var cats = Object.keys(inventoryData);
+    // If currentInvCat is 'all' or not in data, default to first category
+    if (currentInvCat === 'all' || !inventoryData[currentInvCat]) {
+      currentInvCat = cats[0];
+    }
+    var tabsHtml = '';
+    cats.forEach(function(cat) {
+      var catColor = INV_CAT_COLORS[cat] || 'var(--ss-orange)';
+      tabsHtml += '<button class="inv-cat-tab' + (currentInvCat === cat ? ' active' : '') + '" style="' + (currentInvCat === cat ? 'border-color:' + catColor + ';color:' + catColor + ';' : '') + '" onclick="switchInvCat(this,\'' + cat.replace(/'/g,"\\'") + '\')">' + cat + '<span class="cat-count">' + inventoryData[cat].length + '</span></button>';
     });
     tabsEl.innerHTML = tabsHtml;
     tabsEl.style.display = 'flex';
@@ -1423,59 +1478,58 @@ function renderInventory() {
 function renderInvProducts() {
   var container = document.getElementById('invProductList');
   var searchTerm = (document.getElementById('invSearch').value || '').toLowerCase();
-  var cats = currentInvCat === 'all' ? Object.keys(inventoryData) : [currentInvCat];
 
   if (Object.keys(inventoryData).length === 0) {
     container.innerHTML = '<div class="inv-empty"><div class="inv-empty-icon">&#x1F386;</div><div class="inv-empty-title">No Inventory Loaded</div><div class="inv-empty-sub">Upload your Solid Second Inventory spreadsheet<br>to see your fireworks catalog here.</div></div>';
     return;
   }
 
-  var html = '';
-  var shown = 0;
-  cats.forEach(function(cat) {
-    var items = inventoryData[cat] || [];
-    var filtered = items.filter(function(it) {
-      if (!searchTerm) return true;
-      return it.name.toLowerCase().indexOf(searchTerm) >= 0 ||
-        it.partNum.toLowerCase().indexOf(searchTerm) >= 0 ||
-        it.brand.toLowerCase().indexOf(searchTerm) >= 0;
-    });
-    if (filtered.length === 0) return;
+  var cat = currentInvCat;
+  var items = inventoryData[cat] || [];
+  var catColor = INV_CAT_COLORS[cat] || 'var(--ss-orange)';
 
-    var catColor = INV_CAT_COLORS[cat] || 'var(--ss-orange)';
-    html += '<div class="equip-section-title" style="margin-top:' + (shown > 0 ? '18' : '4') + 'px;"><span style="color:' + catColor + ';">' + cat + '</span><span class="es-line"></span><span style="font-size:10px;color:var(--ss-text-muted);">' + filtered.length + ' items</span></div>';
-
-    filtered.forEach(function(it) {
-      html += '<div class="inv-item-row">';
-      html += '<div class="inv-item-info">';
-      html += '<div class="inv-item-name">' + it.name + '</div>';
-      html += '<div class="inv-item-meta">';
-      if (it.partNum) html += '<span style="color:' + catColor + ';font-weight:600;">' + it.partNum + '</span>';
-      if (it.brand) html += '<span>' + it.brand + '</span>';
-      if (it.size) html += '<span>' + it.size + '</span>';
-      if (it.duration) html += '<span>&#x23F1; ' + it.duration + '</span>';
-      if (it.liftTime) html += '<span>&#x2B06; ' + it.liftTime + '</span>';
-      html += '</div></div>';
-      html += '<div class="inv-item-qty">' + it.qty + '</div>';
-      if (it.videoLink && it.videoLink.indexOf('http') === 0) {
-        html += '<a class="inv-item-video" href="' + it.videoLink + '" target="_blank" onclick="event.stopPropagation();">&#x25B6;</a>';
-      }
-      html += '</div>';
-    });
-    shown += filtered.length;
+  var filtered = items.filter(function(it) {
+    if (!searchTerm) return true;
+    return it.name.toLowerCase().indexOf(searchTerm) >= 0 ||
+      it.partNum.toLowerCase().indexOf(searchTerm) >= 0 ||
+      it.brand.toLowerCase().indexOf(searchTerm) >= 0;
   });
 
-  if (shown === 0 && searchTerm) {
-    html = '<div class="inv-empty"><div class="inv-empty-icon">&#x1F50D;</div><div class="inv-empty-title">No Results</div><div class="inv-empty-sub">No products match "' + searchTerm + '"</div></div>';
+  if (filtered.length === 0 && searchTerm) {
+    container.innerHTML = '<div class="inv-empty"><div class="inv-empty-icon">&#x1F50D;</div><div class="inv-empty-title">No Results</div><div class="inv-empty-sub">No products in ' + cat + ' match "' + searchTerm + '"</div></div>';
+    return;
   }
+
+  var html = '<div class="equip-section-title" style="margin-top:4px;"><span style="color:' + catColor + ';">' + cat + '</span><span class="es-line"></span><span style="font-size:10px;color:var(--ss-text-muted);">' + filtered.length + ' items</span></div>';
+
+  filtered.forEach(function(it) {
+    html += '<div class="inv-item-row">';
+    html += '<div class="inv-item-info">';
+    html += '<div class="inv-item-name">' + it.name + '</div>';
+    html += '<div class="inv-item-meta">';
+    if (it.partNum) html += '<span style="color:' + catColor + ';font-weight:600;">' + it.partNum + '</span>';
+    if (it.brand) html += '<span>' + it.brand + '</span>';
+    if (it.size) html += '<span>' + it.size + '</span>';
+    if (it.duration) html += '<span>&#x23F1; ' + it.duration + '</span>';
+    if (it.liftTime) html += '<span>&#x2B06; ' + it.liftTime + '</span>';
+    html += '</div></div>';
+    html += '<div class="inv-item-qty">' + it.qty + '</div>';
+    if (it.videoLink && it.videoLink.indexOf('http') === 0) {
+      html += '<a class="inv-item-video" href="' + it.videoLink + '" target="_blank" onclick="event.stopPropagation();">&#x25B6;</a>';
+    }
+    html += '</div>';
+  });
 
   container.innerHTML = html;
 }
 
 function switchInvCat(btn, cat) {
   currentInvCat = cat;
-  document.querySelectorAll('.inv-cat-tab').forEach(function(t) { t.classList.remove('active'); });
+  var catColor = INV_CAT_COLORS[cat] || 'var(--ss-orange)';
+  document.querySelectorAll('.inv-cat-tab').forEach(function(t) { t.classList.remove('active'); t.style.borderColor = ''; t.style.color = ''; });
   btn.classList.add('active');
+  btn.style.borderColor = catColor;
+  btn.style.color = catColor;
   renderInvProducts();
 }
 
@@ -1571,6 +1625,13 @@ function saveEquipment() {
   var parts = pick.split('|'); // type|item|cue
   var type = parts[0], item = parts[1], cue = parts[2] || '';
 
+  // Handle custom equipment
+  if (type === 'custom') {
+    item = (document.getElementById('customEquipName').value || '').trim();
+    if (!item) { showToast('Enter a name for your custom equipment'); return; }
+    type = 'accessory';
+  }
+
   var member = CREW[memberKey];
   if (!member) { showToast('Invalid crew member'); return; }
 
@@ -1604,6 +1665,8 @@ function saveEquipment() {
   showToast(CREW[memberKey].name + ' — ' + item + ' updated to ' + qty);
   document.getElementById('editEquipPick').value = '';
   document.getElementById('editQty').value = '';
+  document.getElementById('customEquipName').value = '';
+  document.getElementById('customEquipGroup').style.display = 'none';
 }
 
 function refreshEquipViews() {
@@ -1644,14 +1707,81 @@ function deleteEquipItem(memberKey, type, item, cue) {
   showToast(label + ' removed from ' + member.name);
 }
 
-// Clear entire inventory
+// Clear entire inventory — two-step safety
 function clearInventory() {
-  if (!confirm('Clear ALL inventory data? This cannot be undone.')) return;
-  inventoryData = {};
-  localStorage.removeItem('ss_inventory');
-  currentInvCat = 'all';
-  renderInventory();
-  showToast('Inventory cleared');
+  var exportFirst = confirm('Clear ALL inventory data?\n\nClick OK to continue, or Cancel to keep your data.');
+  if (!exportFirst) return;
+  var wantExport = confirm('Would you like to export a backup spreadsheet before clearing?\n\nOK = Export first, then clear\nCancel = Just clear it now');
+  if (wantExport) {
+    exportInventory();
+    setTimeout(function() {
+      inventoryData = {};
+      localStorage.removeItem('ss_inventory');
+      currentInvCat = 'all';
+      renderInventory();
+      showToast('Backup exported & inventory cleared');
+    }, 500);
+  } else {
+    inventoryData = {};
+    localStorage.removeItem('ss_inventory');
+    currentInvCat = 'all';
+    renderInventory();
+    showToast('Inventory cleared');
+  }
+}
+
+// ===== EVENT MODAL LOGIC =====
+function populateEventModal() {
+  var leadSel = document.getElementById('evtLead');
+  leadSel.innerHTML = '<option value="">Select lead...</option>' +
+    Object.keys(CREW).map(function(k) { return '<option value="' + k + '">' + CREW[k].name + '</option>'; }).join('');
+
+  var checksEl = document.getElementById('evtCrewChecks');
+  checksEl.innerHTML = Object.keys(CREW).map(function(k) {
+    return '<label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;">' +
+      '<input type="checkbox" value="' + k + '" class="evt-crew-cb"> ' + CREW[k].name + '</label>';
+  }).join('');
+}
+
+function saveEvent() {
+  var name = (document.getElementById('evtName').value || '').trim();
+  var dateVal = document.getElementById('evtDate').value;
+  var sub = (document.getElementById('evtSub').value || '').trim();
+  var lead = document.getElementById('evtLead').value;
+  var loadIn = (document.getElementById('evtLoadIn').value || '').trim();
+  var shootTime = (document.getElementById('evtShootTime').value || '').trim();
+
+  if (!name || !dateVal) { showToast('Enter a name and date'); return; }
+
+  var d = new Date(dateVal + 'T12:00:00');
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  var crewGoing = [];
+  document.querySelectorAll('.evt-crew-cb:checked').forEach(function(cb) { crewGoing.push(cb.value); });
+
+  EVENTS.push({
+    title: name,
+    month: months[d.getMonth()],
+    day: d.getDate(),
+    sub: sub || 'TBD',
+    lead: lead ? CREW[lead].name : 'TBD',
+    loadIn: loadIn || 'TBD',
+    shootTime: shootTime || 'TBD',
+    assignments: [],
+    crew: crewGoing
+  });
+
+  renderEvents();
+  closeModal('addEventModal');
+  showToast('Event added: ' + name);
+
+  // Reset form
+  document.getElementById('evtName').value = '';
+  document.getElementById('evtDate').value = '';
+  document.getElementById('evtSub').value = '';
+  document.getElementById('evtLead').value = '';
+  document.getElementById('evtLoadIn').value = '';
+  document.getElementById('evtShootTime').value = '';
 }
 
 function populateEditMembers() {
