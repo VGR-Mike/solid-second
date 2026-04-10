@@ -1408,8 +1408,8 @@ function renderMembers() {
 }
 
 // ===== INVENTORY SYSTEM =====
-const INV_CATEGORIES = ['Single Shots','500G','Comets','Mines','Slices','Zippers','200G','Fountain-Strobes','1.3'];
-const INV_CAT_COLORS = {'Single Shots':'#E8700A','500G':'#C62828','Comets':'#1565C0','Mines':'#2E7D32','Slices':'#6A1B9A','Zippers':'#E65100','200G':'#00838F','Fountain-Strobes':'#37474F','1.3':'#B71C1C'};
+const INV_CATEGORIES = ['Single Shots','500G','Comets','Mines','Slices','Zippers','200G','Fountain-Strobes'];
+const INV_CAT_COLORS = {'Single Shots':'#E8700A','500G':'#C62828','Comets':'#1565C0','Mines':'#2E7D32','Slices':'#6A1B9A','Zippers':'#E65100','200G':'#00838F','Fountain-Strobes':'#37474F'};
 let inventoryData = {}; // { 'Single Shots': [{name,partNum,brand,size,qty,videoLink,duration,liftTime}], ... }
 let currentInvCat = 'all';
 
@@ -1645,6 +1645,7 @@ function handleExcelUpload(file, mode) {
   reader.onload = function(e) {
     try {
       var wb = XLSX.read(e.target.result, { type: 'array' });
+      var skipped13 = [];
       var newData = {};
       wb.SheetNames.forEach(function(sheetName) {
         var ws = wb.Sheets[sheetName];
@@ -1682,12 +1683,16 @@ function handleExcelUpload(file, mode) {
           items.push({ name:name, partNum:partNum, brand:brand, size:size, qty:qty, videoLink:videoLink, duration:duration, liftTime:liftTime });
         }
         sortInventoryItems(items);
-        if (items.length > 0) newData[sheetName] = items;
+        // Skip 1.3G tabs
+        if (sheetName === '1.3' || sheetName.toLowerCase() === '1.3g') {
+          skipped13 = skipped13.concat(items);
+        } else if (items.length > 0) {
+          newData[sheetName] = items;
+        }
       });
 
       var hasExisting = Object.keys(inventoryData).length > 0;
       if (mode === 'add' && hasExisting) {
-        // Merge: add new items into existing, update qty for matching part numbers
         mergeIntoInventory(newData, 'add');
         showToast('Inventory updated — ' + getTotalInvItems() + ' products');
       } else if (mode === 'remove' && hasExisting) {
@@ -1697,6 +1702,7 @@ function handleExcelUpload(file, mode) {
         inventoryData = newData;
         showToast('Inventory loaded: ' + getTotalInvItems() + ' products');
       }
+      if (skipped13.length > 0) show13Warning(skipped13);
 
       saveInventoryToStorage();
       renderInventory();
@@ -1841,25 +1847,26 @@ function parsePdfOrderLines(pageLines, fileName, mode) {
 
   // Auto-categorize into inventory categories based on description/part number
   var categorized = {};
+  var skipped13 = [];
   allItems.forEach(function(item) {
     var cat = categorizeItem(item);
+    if (cat === '__1.3__') { skipped13.push(item); return; }
     if (!categorized[cat]) categorized[cat] = [];
     categorized[cat].push(item);
   });
 
-  // Sort each category
   Object.keys(categorized).forEach(function(cat) { sortInventoryItems(categorized[cat]); });
 
-  // Use the mode passed from handleInventoryUpload
   var hasExisting = Object.keys(inventoryData).length > 0;
   if (hasExisting && (mode === 'add' || mode === 'remove')) {
     mergeIntoInventory(categorized, mode);
     var verb = mode === 'add' ? 'added to' : 'removed from';
-    showToast(allItems.length + ' products ' + verb + ' inventory');
+    showToast((allItems.length - skipped13.length) + ' products ' + verb + ' inventory');
   } else {
     inventoryData = categorized;
-    showToast('PDF imported: ' + allItems.length + ' products');
+    showToast('PDF imported: ' + (allItems.length - skipped13.length) + ' products');
   }
+  if (skipped13.length > 0) show13Warning(skipped13);
 
   saveInventoryToStorage();
   renderInventory();
@@ -1977,35 +1984,82 @@ function parseFinale3dLines(pageLines, mode) {
     return;
   }
 
-  // Categorize items
+  // Categorize items — separate out 1.3G
   var categorized = {};
+  var skipped13 = [];
   allItems.forEach(function(item) {
     var cat = categorizeItem(item);
+    if (cat === '__1.3__') { skipped13.push(item); return; }
     if (!categorized[cat]) categorized[cat] = [];
     categorized[cat].push(item);
   });
   Object.keys(categorized).forEach(function(cat) { sortInventoryItems(categorized[cat]); });
 
-  // Apply using mode
   var hasExisting = Object.keys(inventoryData).length > 0;
+  var processed = allItems.length - skipped13.length;
   if (hasExisting && (mode === 'add' || mode === 'remove')) {
-    var count = mergeIntoInventory(categorized, mode);
+    mergeIntoInventory(categorized, mode);
     var verb = mode === 'add' ? 'added to' : 'deducted from';
-    showToast(allItems.length + ' products ' + verb + ' inventory');
+    showToast(processed + ' products ' + verb + ' inventory');
   } else {
     inventoryData = categorized;
-    showToast('Loaded ' + allItems.length + ' products from Finale 3D');
+    showToast('Loaded ' + processed + ' products from Finale 3D');
   }
+  if (skipped13.length > 0) show13Warning(skipped13);
 
   saveInventoryToStorage();
   renderInventory();
 }
 
 // Auto-categorize items based on description and part number
+// Show warning when 1.3G items are detected in an upload
+function show13Warning(items13) {
+  var html = '<div class="modal-handle"></div>';
+  html += '<h2 style="color:#EF5350;">&#x26A0; 1.3G Items Skipped</h2>';
+  html += '<div style="font-size:13px;color:var(--ss-text-muted);margin-bottom:14px;">This app currently handles <strong>1.4G and 1.4G Pro</strong> consumer fireworks only. 1.3G products are federally regulated and were <strong>not</strong> processed.</div>';
+  html += '<div style="background:rgba(198,40,40,0.12);border:1px solid rgba(198,40,40,0.3);border-radius:8px;padding:12px;margin-bottom:14px;max-height:300px;overflow-y:auto;">';
+  html += '<div style="font-weight:700;margin-bottom:8px;font-size:13px;">' + items13.length + ' items skipped:</div>';
+  items13.forEach(function(it) {
+    html += '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px;">';
+    html += '<div>' + it.name + (it.partNum ? ' <span style="color:var(--ss-orange);">' + it.partNum + '</span>' : '') + '</div>';
+    html += '<div style="font-weight:600;min-width:30px;text-align:right;">' + it.qty + '</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+  html += '<div style="font-size:11px;color:var(--ss-text-muted);margin-bottom:14px;">1.3G tracking may be added in a future update.</div>';
+  html += '<div class="form-actions"><button class="btn-modal-primary" onclick="closeModal(\'warn13Modal\')">Got It</button></div>';
+
+  var modal = document.getElementById('warn13Modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'warn13Modal';
+    modal.addEventListener('click', function(e) { if (e.target === modal) modal.classList.remove('open'); });
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = '<div class="modal-sheet" style="max-height:80vh;overflow-y:auto;">' + html + '</div>';
+  // Small delay so deduction report shows first if both happen
+  setTimeout(function() { openModal('warn13Modal'); }, 500);
+}
+
+// Detect if an item is 1.3G (federally regulated — not tracked in this app)
+function is13G(item) {
+  var desc = (item.name + ' ' + item.partNum + ' ' + (item.size || '')).toLowerCase();
+  // 2.5" and up are 1.3, plus known 1.3 keywords
+  if (desc.match(/^2\.5"|^3"|^4"|^5"|^6"|^12"|fireball|girandola|salute/)) return true;
+  if (desc.match(/\b62mm\b/) && desc.match(/shell|single shot|peony|brocade|horsetail/)) return true;
+  if (desc.match(/\b(2\.5|3|4|5|6|8|12)\s*"/)) return true;
+  if (desc.match(/gua |gua$/)) return true; // Guangzhou shells are 1.3
+  if (desc.match(/wiz .*(peony|chrys|strobe|ring|willow|palm|rain|fish|glitter)/)) return true; // Wizard shells
+  return false;
+}
+
 function categorizeItem(item) {
   var desc = (item.name + ' ' + item.partNum).toLowerCase();
-  // 1.3/1.4 shells
-  if (desc.match(/shell|62mm|pro1\.4|1\.4|girandola/)) return '1.3';
+  // 1.3G — flag but don't include
+  if (is13G(item)) return '__1.3__';
+  // Pro 1.4 shells (these ARE 1.4 consumer)
+  if (desc.match(/pro1\.4|1\.4 shell/)) return 'Single Shots';
   // Comets
   if (desc.match(/comet|meteor|tiger tail/)) return 'Comets';
   // Mines
