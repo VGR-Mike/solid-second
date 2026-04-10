@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Solid Second — Crew Equipment Hub</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Solid Second">
+<meta name="theme-color" content="#0A0A0A">
+<style>
+  :root {
+    --ss-orange: #E8700A;
+    --ss-copper: #B85C1E;
+    --ss-gold: #D4920A;
+    --ss-silver: #C0C0C0;
+    --ss-dark: #0A0A0A;
+    --ss-darker: #050505;
+    --ss-card: #151515;
+    --ss-card-hover: #1C1C1C;
+    --ss-border: rgba(232,112,10,0.18);
+    --ss-border-subtle: rgba(255,255,255,0.07);
+    --ss-text: #F0F0F0;
+    --ss-text-muted: #777;
+    --ss-success: #4CAF50;
+    --ss-red: #E53935;
+    --ss-blue: #2196F3;
+    --qp-color: #42A5F5;
+    --oc-color: #E8700A;
+    --ss-glow: 0 0 40px rgba(232,112,10,0.15);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--ss-dark);
+    color: var(--ss-text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ===== SPLASH ===== */
+  #splash {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: radial-gradient(ellipse at center, #181210 0%, #050505 70%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 9999;
+    animation: splashFade 0.6s ease 2.5s forwards;
+  }
+  #splash.fade { opacity: 0; pointer-events: none; }
+  @keyframes splashFade { 0%{opacity:1;pointer-events:auto;} 100%{opacity:0;pointer-events:none;visibility:hidden;} }
+  #splash .tagline { font-size: 14px; color: var(--ss-copper); letter-spacing: 3px; text-transform: uppercase; font-weight: 700; margin-bottom: 28px; }
+  #splash .loading-bar { width: 220px; height: 3px; background: #1a1a1a; border-radius: 3px; overflow: hidden; }
+  #splash .loading-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--ss-orange), var(--ss-gold), var(--ss-orange)); border-radius: 3px; animation: load 2s ease forwards; }
+  @keyframes load { 0%{width:0} 100%{width:100%} }
+
+  /* ===== CSS LOGO ===== */
+  .ss-logo-big {
+    display: flex; flex-direction: column; align-items: center; margin-bottom: 16px;
+    animation: splashPulse 2s ease-in-out infinite;
+  }
+  .ss-logo-big .ss-logo-2nd {
+    font-size: 72px; font-weight: 900; color: var(--ss-silver);
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 0 30px rgba(232,112,10,0.3);
+    line-height: 1;
+  }
+  .ss-logo-big .ss-logo-2nd sup { font-size: 28px; }
+  .ss-logo-big .ss-logo-text {
+    font-size: 26px; font-weight: 900; color: var(--ss-text);
+    text-align: center; line-height: 1.1; letter-spacing: 3px;
+    text-shadow: 0 0 20px rgba(232,112,10,0.4);
+    background: linear-gradient(180deg, #fff 0%, var(--ss-orange) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .ss-logo-sm {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: linear-gradient(135deg, rgba(232,112,10,0.2), rgba(184,92,30,0.15));
+    border: 1px solid rgba(232,112,10,0.3);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .ss-logo-sm .ss-logo-2nd {
+    font-size: 18px; font-weight: 900; color: var(--ss-orange);
+    line-height: 1;
+  }
+  .ss-logo-sm .ss-logo-2nd sup { font-size: 8px; }
+  @keyframes splashPulse { 0%,100%{ transform: scale(1); } 50%{ transform: scale(1.05); } }
+
+  /* ===== TOP HEADER ===== */
+  .top-header {
+    position: sticky; top: 0; z-index: 90;
+    background: linear-gradient(180deg, var(--ss-darker) 0%, rgba(5,5,5,0.97) 100%);
+    border-bottom: 1px solid var(--ss-border);
+    padding: 10px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    backdrop-filter: blur(12px);
+  }
+  .top-header-left { display: flex; align-items: center; gap: 10px; }
+  .top-header img { height: 38px; filter: drop-shadow(0 0 8px rgba(232,112,10,0.3)); }
+  .brand-text { display: flex; flex-direction: column; }
+  .brand-name { font-size: 17px; font-weight: 900; color: var(--ss-orange); letter-spacing: 0.5px; line-height: 1.1; }
+  .brand-sub { font-size: 9px; color: var(--ss-copper); letter-spacing: 2px; text-transform: uppercase; font-weight: 700; }
+  .top-header-right { display: flex; align-items: center; gap: 10px; }
+  .mopyro-badge {
+    font-size: 9px; color: var(--ss-gold);
+    border: 1px solid rgba(212,146,10,0.3);
+    padding: 4px 10px; border-radius: 12px;
+    text-transform: uppercase; letter-spacing: 1px; font-weight: 700;
+    background: rgba(212,146,10,0.06);
+  }
+  .user-pill {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--ss-card); border-radius: 24px;
+    padding: 5px 12px 5px 5px; cursor: pointer;
+    border: 1px solid var(--ss-border-subtle);
+    transition: border-color 0.2s;
+  }
+  .user-pill:hover { border-color: var(--ss-orange); }
+  .user-pill-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--ss-orange), var(--ss-copper));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 800; color: #fff;
+  }
+  .user-pill-name { font-size: 13px; font-weight: 600; }
+
+  /* ===== BOTTOM NAV ===== */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--ss-darker);
+    border-top: 1px solid var(--ss-border);
+    display: flex; justify-content: space-around;
+    padding: 4px 0 env(safe-area-inset-bottom, 6px);
+    z-index: 100;
+  }
+  .bottom-nav button {
+    background: none; border: none; color: var(--ss-text-muted);
+    font-size: 9px; display: flex; flex-direction: column;
+    align-items: center; gap: 2px; padding: 6px 8px;
+    cursor: pointer; transition: color 0.2s; min-width: 52px;
+    position: relative;
+  }
+  .bottom-nav button svg { width: 20px; height: 20px; }
+  .bottom-nav button.active { color: var(--ss-orange); }
+  .bottom-nav button.active::after {
+    content: ''; position: absolute; top: -1px; left: 50%; transform: translateX(-50%);
+    width: 24px; height: 2px; background: var(--ss-orange); border-radius: 0 0 2px 2px;
+  }
+
+  /* ===== PAGES ===== */
+  .page { display: none; padding: 16px 16px 90px; max-width: 900px; margin: 0 auto; }
+  .page.active { display: block; animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+  /* ===== HOME ===== */
+  .welcome-banner {
+    background: linear-gradient(135deg, rgba(232,112,10,0.14), rgba(184,92,30,0.08), rgba(212,146,10,0.06));
+    border: 1px solid var(--ss-border);
+    border-radius: 16px;
+    padding: 24px 20px;
+    margin-bottom: 20px;
+    position: relative; overflow: hidden;
+  }
+  .welcome-banner::before {
+    content: ''; position: absolute; top: -30px; right: -30px;
+    width: 120px; height: 120px;
+    background: radial-gradient(circle, rgba(232,112,10,0.12) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .welcome-banner .wb-logo { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); width: 50px; height: 50px; }
+  .welcome-banner h2 { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+  .welcome-banner p { color: var(--ss-text-muted); font-size: 13px; line-height: 1.5; max-width: 75%; }
+
+  .quick-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 22px; }
+  .qs-card {
+    background: var(--ss-card); border-radius: 14px; padding: 16px;
+    border: 1px solid var(--ss-border-subtle);
+    cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden;
+  }
+  .qs-card::after {
+    content: ''; position: absolute; top: 0; right: 0;
+    width: 40px; height: 40px;
+    background: radial-gradient(circle at top right, rgba(232,112,10,0.08), transparent 70%);
+  }
+  .qs-card:hover { border-color: var(--ss-orange); transform: translateY(-2px); box-shadow: var(--ss-glow); }
+  .qs-card .qs-num { font-size: 26px; font-weight: 800; color: var(--ss-orange); }
+  .qs-card .qs-label { font-size: 11px; color: var(--ss-text-muted); margin-top: 2px; }
+
+  .section-title {
+    font-size: 15px; font-weight: 700; margin-bottom: 12px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .section-title .see-all { font-size: 12px; color: var(--ss-orange); cursor: pointer; background: none; border: none; font-weight: 600; }
+
+  .event-mini {
+    background: var(--ss-card); border-radius: 12px; padding: 14px;
+    border: 1px solid var(--ss-border-subtle); margin-bottom: 8px;
+    display: flex; align-items: center; gap: 12px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .event-mini:hover { border-color: var(--ss-orange); box-shadow: var(--ss-glow); }
+  .event-mini-date {
+    background: linear-gradient(135deg, var(--ss-orange), var(--ss-copper));
+    border-radius: 10px; padding: 8px 12px; text-align: center; min-width: 50px;
+  }
+  .event-mini-date .em-month { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.8); }
+  .event-mini-date .em-day { font-size: 20px; font-weight: 800; line-height: 1; margin-top: 1px; color: #fff; }
+  .event-mini-info { flex: 1; min-width: 0; }
+  .event-mini-info .em-title { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .event-mini-info .em-meta { font-size: 11px; color: var(--ss-text-muted); }
+  .event-mini-mods { text-align: right; }
+  .event-mini-mods .em-mod-num { font-size: 16px; font-weight: 800; color: var(--ss-orange); }
+  .event-mini-mods .em-mod-label { font-size: 9px; color: var(--ss-text-muted); }
+
+  /* ===== EQUIPMENT ===== */
+  .crew-selector-wrap {
+    position: relative; margin-bottom: 16px;
+  }
+  .crew-selector-wrap::after {
+    content: ''; position: absolute; top: 0; right: 0;
+    width: 40px; height: calc(100% - 6px);
+    background: linear-gradient(90deg, transparent, var(--ss-dark));
+    pointer-events: none; z-index: 1;
+  }
+  .crew-selector {
+    display: flex; gap: 6px; overflow-x: auto;
+    padding-bottom: 12px; padding-right: 36px;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  .crew-selector::-webkit-scrollbar { display: none; }
+  .crew-chip {
+    background: var(--ss-card); border: 1px solid var(--ss-border-subtle);
+    color: var(--ss-text-muted); padding: 7px 14px; border-radius: 20px;
+    font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    transition: all 0.2s; flex-shrink: 0;
+  }
+  .crew-chip:hover, .crew-chip.active {
+    background: rgba(232,112,10,0.15); border-color: var(--ss-orange); color: var(--ss-orange);
+  }
+
+  .equip-section { margin-bottom: 20px; }
+  .equip-section-title {
+    font-size: 11px; font-weight: 700; color: var(--ss-text-muted);
+    text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .equip-section-title .es-line { flex: 1; height: 1px; background: var(--ss-border-subtle); }
+
+  .equip-item {
+    background: var(--ss-card); border-radius: 10px; padding: 12px 14px;
+    border: 1px solid var(--ss-border-subtle); margin-bottom: 6px;
+    display: flex; align-items: center; justify-content: space-between;
+    transition: all 0.2s;
+  }
+  .equip-item:hover { border-color: var(--ss-border); }
+  .equip-item-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+  .equip-item-icon {
+    width: 34px; height: 34px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; flex-shrink: 0;
+  }
+  .equip-item-icon.cobra { background: rgba(232,112,10,0.12); }
+  .equip-item-icon.cobra-qp { background: rgba(66,165,245,0.12); }
+  .equip-item-icon.accessory { background: rgba(156,39,176,0.12); }
+  .equip-item-icon.rack { background: rgba(255,152,0,0.12); }
+  .equip-item-icon.tube { background: rgba(244,67,54,0.12); }
+  .equip-item-name { font-size: 13px; font-weight: 600; }
+  .equip-item-sub { font-size: 11px; color: var(--ss-text-muted); }
+  .equip-item-qty { font-size: 20px; font-weight: 800; color: var(--ss-orange); min-width: 40px; text-align: right; }
+
+  .type-tag {
+    display: inline-block; font-size: 9px; font-weight: 700;
+    padding: 2px 6px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .type-tag.oc { background: rgba(232,112,10,0.2); color: var(--oc-color); }
+  .type-tag.qp { background: rgba(66,165,245,0.2); color: var(--qp-color); }
+
+  /* ===== PLANNER ===== */
+  .planner-card {
+    background: var(--ss-card); border-radius: 16px; padding: 20px;
+    border: 1px solid var(--ss-border); margin-bottom: 16px;
+  }
+  .planner-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .planner-input-row { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .planner-field { flex: 1; min-width: 110px; }
+  .planner-field label {
+    display: block; font-size: 10px; font-weight: 700;
+    color: var(--ss-text-muted); text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 5px;
+  }
+  .planner-field input, .planner-field select {
+    width: 100%; background: rgba(255,255,255,0.04);
+    border: 1px solid var(--ss-border-subtle); color: var(--ss-text);
+    padding: 10px 12px; border-radius: 8px; font-size: 13px; outline: none;
+    transition: border-color 0.2s;
+  }
+  .planner-field input:focus, .planner-field select:focus { border-color: var(--ss-orange); }
+  .planner-field select option { background: var(--ss-card); }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--ss-orange), var(--ss-copper));
+    color: #fff; border: none; padding: 12px 24px; border-radius: 10px;
+    font-size: 14px; font-weight: 700; cursor: pointer; width: 100%;
+    transition: transform 0.15s, box-shadow 0.2s;
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(232,112,10,0.3); }
+
+  .planner-results { display: none; margin-top: 16px; }
+  .planner-results.show { display: block; animation: fadeIn 0.3s ease; }
+  .pr-summary {
+    background: rgba(76,175,80,0.08); border: 1px solid rgba(76,175,80,0.2);
+    border-radius: 12px; padding: 14px; margin-bottom: 12px;
+    font-size: 13px; line-height: 1.6;
+  }
+  .pr-summary strong { color: var(--ss-success); }
+  .pr-summary.warning { background: rgba(255,152,0,0.08); border-color: rgba(255,152,0,0.2); }
+  .pr-summary.warning strong { color: #FF9800; }
+
+  .pr-borrow-card {
+    background: rgba(255,255,255,0.02); border: 1px solid var(--ss-border-subtle);
+    border-radius: 10px; padding: 12px 14px; margin-bottom: 6px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .pr-borrow-left { display: flex; align-items: center; gap: 10px; }
+  .pr-borrow-avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800; color: #fff;
+  }
+  .pr-borrow-name { font-size: 13px; font-weight: 600; }
+  .pr-borrow-detail { font-size: 11px; color: var(--ss-text-muted); }
+  .pr-borrow-right { text-align: right; }
+  .pr-borrow-qty { font-size: 18px; font-weight: 800; }
+  .pr-borrow-type { font-size: 10px; color: var(--ss-text-muted); }
+  .btn-sm {
+    background: rgba(232,112,10,0.12); color: var(--ss-orange);
+    border: 1px solid rgba(232,112,10,0.4); padding: 6px 14px; border-radius: 8px;
+    font-size: 11px; font-weight: 700; cursor: pointer; margin-top: 4px; transition: all 0.2s;
+  }
+  .btn-sm:hover { background: var(--ss-orange); color: #fff; }
+  .btn-sm.sent { background: var(--ss-success); color: #fff; border-color: var(--ss-success); pointer-events: none; }
+
+  /* ===== EVENTS ===== */
+  .event-card-full {
+    background: var(--ss-card); border-radius: 14px;
+    border: 1px solid var(--ss-border-subtle); margin-bottom: 12px;
+    overflow: hidden; transition: all 0.2s;
+  }
+  .event-card-full:hover { border-color: var(--ss-orange); }
+  .event-card-header {
+    background: linear-gradient(135deg, rgba(232,112,10,0.12), rgba(184,92,30,0.06));
+    padding: 14px 16px; display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer;
+  }
+  .event-card-header-left { display: flex; align-items: center; gap: 12px; }
+  .event-card-date {
+    background: linear-gradient(135deg, var(--ss-orange), var(--ss-copper));
+    border-radius: 10px; padding: 8px 12px; text-align: center; min-width: 50px;
+  }
+  .event-card-date .ecd-month { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.8); }
+  .event-card-date .ecd-day { font-size: 22px; font-weight: 800; line-height: 1; margin-top: 2px; color: #fff; }
+  .event-card-title { font-size: 15px; font-weight: 700; }
+  .event-card-sub { font-size: 12px; color: var(--ss-text-muted); margin-top: 2px; }
+  .event-card-body { padding: 14px 16px; display: none; }
+  .event-card-full.expanded .event-card-body { display: block; animation: fadeIn 0.2s ease; }
+  .event-equip-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 0; border-bottom: 1px solid var(--ss-border-subtle); font-size: 12px;
+  }
+  .event-equip-row:last-child { border-bottom: none; }
+  .eer-name { font-weight: 600; }
+  .eer-detail { color: var(--ss-text-muted); }
+  .eer-qty { font-weight: 800; color: var(--ss-orange); }
+  .event-total-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0 4px; margin-top: 6px;
+    border-top: 2px solid var(--ss-border); font-size: 13px; font-weight: 700;
+  }
+  .etr-qty { color: var(--ss-orange); font-size: 16px; }
+  .event-crew-going { display: flex; margin-top: 10px; }
+  .event-crew-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 800; color: #fff;
+    border: 2px solid var(--ss-card); margin-left: -5px;
+  }
+  .event-crew-avatar:first-child { margin-left: 0; }
+  .expand-indicator { color: var(--ss-text-muted); font-size: 12px; transition: transform 0.2s; }
+  .event-card-full.expanded .expand-indicator { transform: rotate(180deg); }
+
+  /* ===== MEMBERS ===== */
+  .member-row {
+    background: var(--ss-card); border-radius: 12px; padding: 14px;
+    border: 1px solid var(--ss-border-subtle); margin-bottom: 8px;
+    display: flex; align-items: center; gap: 12px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .member-row:hover { border-color: var(--ss-orange); box-shadow: var(--ss-glow); }
+  .member-row-avatar {
+    width: 42px; height: 42px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 800; color: #fff; flex-shrink: 0;
+  }
+  .member-row-info { flex: 1; }
+  .member-row-name { font-size: 14px; font-weight: 700; }
+  .member-row-sub { font-size: 11px; color: var(--ss-text-muted); }
+  .member-row-equip { text-align: right; }
+  .mre-num { font-size: 18px; font-weight: 800; color: var(--ss-orange); }
+  .mre-label { font-size: 9px; color: var(--ss-text-muted); }
+  .shared-badge {
+    font-size: 9px; font-weight: 700; background: rgba(232,112,10,0.12);
+    color: var(--ss-orange); padding: 2px 6px; border-radius: 6px; margin-left: 4px;
+  }
+
+  /* ===== INVENTORY ===== */
+  .inv-tabs { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 2px solid var(--ss-border-subtle); }
+  .inv-tab {
+    background: none; border: none; color: var(--ss-text-muted);
+    font-size: 13px; font-weight: 600; padding: 10px 18px; cursor: pointer;
+    border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s;
+  }
+  .inv-tab.active { color: var(--ss-orange); border-bottom-color: var(--ss-orange); }
+  .inv-product-row {
+    background: var(--ss-card); border-radius: 8px; padding: 10px 14px;
+    border: 1px solid var(--ss-border-subtle); margin-bottom: 4px;
+    display: flex; align-items: center; justify-content: space-between; font-size: 13px;
+  }
+  .inv-product-name { font-weight: 600; flex: 1; }
+  .inv-product-qty { font-weight: 800; color: var(--ss-orange); min-width: 36px; text-align: right; }
+  .inv-product-size { color: var(--ss-text-muted); font-size: 11px; min-width: 40px; text-align: center; }
+  .upload-zone {
+    border: 2px dashed var(--ss-border); border-radius: 14px;
+    padding: 28px 20px; text-align: center; margin-bottom: 12px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .upload-zone:hover { border-color: var(--ss-orange); background: rgba(232,112,10,0.03); }
+  .upload-zone .uz-icon { font-size: 28px; margin-bottom: 6px; opacity: 0.5; }
+  .upload-zone .uz-title { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+  .upload-zone .uz-sub { font-size: 11px; color: var(--ss-text-muted); }
+
+  /* ===== MODALS ===== */
+  .modal-overlay {
+    display: none; position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%; background: rgba(0,0,0,0.75);
+    z-index: 200; align-items: flex-end; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-sheet {
+    background: var(--ss-card); border-radius: 20px 20px 0 0;
+    padding: 20px 18px 36px; width: 100%; max-width: 520px;
+    max-height: 85vh; overflow-y: auto; animation: slideUp 0.3s ease;
+  }
+  @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+  .modal-handle { width: 40px; height: 4px; background: #444; border-radius: 2px; margin: 0 auto 16px; }
+  .modal-sheet h2 { font-size: 18px; font-weight: 800; margin-bottom: 16px; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label {
+    display: block; font-size: 10px; font-weight: 700;
+    color: var(--ss-text-muted); text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 5px;
+  }
+  .form-group input, .form-group select {
+    width: 100%; background: rgba(255,255,255,0.04);
+    border: 1px solid var(--ss-border-subtle); color: var(--ss-text);
+    padding: 10px 12px; border-radius: 8px; font-size: 13px; outline: none;
+  }
+  .form-group select option { background: var(--ss-card); }
+  .form-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .btn-modal-primary {
+    flex: 1; background: linear-gradient(135deg, var(--ss-orange), var(--ss-copper));
+    color: #fff; border: none; padding: 12px; border-radius: 10px;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+  .btn-modal-secondary {
+    background: rgba(255,255,255,0.05); color: var(--ss-text-muted);
+    border: 1px solid var(--ss-border-subtle); padding: 12px 18px;
+    border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+
+  /* ===== FAB ===== */
+  .fab {
+    position: fixed; bottom: 72px; right: 16px;
+    width: 50px; height: 50px;
+    background: linear-gradient(135deg, var(--ss-orange), var(--ss-copper));
+    border: none; border-radius: 50%; color: #fff; font-size: 22px;
+    cursor: pointer; z-index: 90;
+    box-shadow: 0 4px 20px rgba(232,112,10,0.4);
+    display: none; align-items: center; justify-content: center;
+    transition: transform 0.2s;
+  }
+  .fab:hover { transform: scale(1.1); }
+  .fab.visible { display: flex; }
+
+  /* ===== TOAST ===== */
+  .toast {
+    position: fixed; bottom: 76px; left: 50%;
+    transform: translateX(-50%) translateY(60px);
+    background: var(--ss-success); color: #fff;
+    padding: 10px 20px; border-radius: 10px;
+    font-size: 13px; font-weight: 600; z-index: 300; opacity: 0;
+    transition: all 0.3s; white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  /* ===== FOOTER BRANDING ===== */
+  .footer-brand {
+    text-align: center; padding: 20px 0 10px;
+    border-top: 1px solid var(--ss-border-subtle); margin-top: 20px;
+  }
+  .footer-brand img { width: 40px; opacity: 0.25; margin-bottom: 4px; }
+  .footer-brand p { font-size: 10px; color: var(--ss-text-muted); letter-spacing: 1px; }
+
+  /* ===== SCROLLBAR ===== */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+  @media (min-width: 768px) {
+    .quick-stats { grid-template-columns: repeat(4, 1fr); }
+    .page { padding: 20px 28px 40px; max-width: 960px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="ss-logo-big"><span class="ss-logo-2nd">2<sup>nd</sup></span><span class="ss-logo-text">SOLID<br>SECOND</span></div>
+  <div class="tagline">Crew Equipment Hub</div>
+  <div class="loading-bar"><div class="loading-fill"></div></div>
+</div>
+
+<!-- TOP HEADER -->
+<div class="top-header">
+  <div class="top-header-left">
+    <div class="ss-logo-sm"><span class="ss-logo-2nd">2<sup>nd</sup></span></div>
+    <div class="brand-text">
+      <span class="brand-name">Solid Second</span>
+      <span class="brand-sub">Equipment Hub</span>
+    </div>
+  </div>
+  <div class="top-header-right">
+    <span class="mopyro-badge">MoPyro</span>
+    <div class="user-pill" onclick="openModal('profileModal')">
+      <div class="user-pill-avatar">MW</div>
+      <span class="user-pill-name">Mike</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== HOME PAGE ===== -->
+<div class="page active" id="page-home">
+  <div class="welcome-banner">
+    <div class="wb-logo ss-logo-sm" style="opacity:0.15;"><span class="ss-logo-2nd">2<sup>nd</sup></span></div>
+    <h2>What's up, Mike</h2>
+    <p>You've got 3 shows coming up. Spring Demo Shoot is in 10 days.</p>
+  </div>
+
+  <div class="quick-stats">
+    <div class="qs-card" onclick="showPage('members')">
+      <div class="qs-num" id="stat-crew">10</div>
+      <div class="qs-label">Crew Members</div>
+    </div>
+    <div class="qs-card" onclick="showPage('equipment')">
+      <div class="qs-num" id="stat-modules">156</div>
+      <div class="qs-label">Total Modules</div>
+    </div>
+    <div class="qs-card" onclick="showPage('events')">
+      <div class="qs-num">3</div>
+      <div class="qs-label">Upcoming Shows</div>
+    </div>
+    <div class="qs-card" onclick="showPage('inventory')">
+      <div class="qs-num" id="stat-tubes">84</div>
+      <div class="qs-label">Fireball Tubes</div>
+    </div>
+  </div>
+
+  <div class="section-title">
+    <span>Upcoming Shows</span>
+    <button class="see-all" onclick="showPage('events')">See all</button>
+  </div>
+
+  <div class="event-mini" onclick="showPage('events')">
+    <div class="event-mini-date"><div class="em-month">Apr</div><div class="em-day">19</div></div>
+    <div class="event-mini-info">
+      <div class="em-title">Spring Demo Shoot</div>
+      <div class="em-meta">Mike Walter's show — 6 crew</div>
+    </div>
+    <div class="event-mini-mods"><div class="em-mod-num">72</div><div class="em-mod-label">modules</div></div>
+  </div>
+  <div class="event-mini" onclick="showPage('events')">
+    <div class="event-mini-date"><div class="em-month">May</div><div class="em-day">24</div></div>
+    <div class="event-mini-info">
+      <div class="em-title">Memorial Day — Club Shoot</div>
+      <div class="em-meta">Jim Rozycki hosting — 8 crew</div>
+    </div>
+    <div class="event-mini-mods"><div class="em-mod-num">108</div><div class="em-mod-label">modules</div></div>
+  </div>
+  <div class="event-mini" onclick="showPage('events')">
+    <div class="event-mini-date"><div class="em-month">Jul</div><div class="em-day">4</div></div>
+    <div class="event-mini-info">
+      <div class="em-title">4th of July — City Show</div>
+      <div class="em-meta">David Thompson lead — Full crew</div>
+    </div>
+    <div class="event-mini-mods"><div class="em-mod-num">180</div><div class="em-mod-label">modules</div></div>
+  </div>
+
+  <div class="footer-brand">
+    <div class="ss-logo-sm" style="opacity:0.25;margin:0 auto 4px;"><span class="ss-logo-2nd">2<sup>nd</sup></span></div>
+    <p>SOLID SECOND &middot; EST. 2024</p>
+  </div>
+</div>
+
+<!-- ===== EQUIPMENT PAGE ===== -->
+<div class="page" id="page-equipment">
+  <div class="section-title"><span>Crew Equipment</span></div>
+  <div class="crew-selector-wrap"><div class="crew-selector" id="crewSelector"></div></div>
+  <div id="equipmentList"></div>
+</div>
+
+<!-- ===== PLANNER PAGE ===== -->
+<div class="page" id="page-planner">
+  <div class="section-title"><span>Show Planner</span></div>
+  <div class="planner-card">
+    <h3>What do you need?</h3>
+    <div class="planner-input-row">
+      <div class="planner-field">
+        <label>Modules Needed</label>
+        <input type="number" id="plannerModCount" value="72" min="1">
+      </div>
+      <div class="planner-field">
+        <label>Preferred Type</label>
+        <select id="plannerModType">
+          <option value="oc">Onboard Cues (OC)</option>
+          <option value="qp">Quick Plug (QP)</option>
+          <option value="any">Either</option>
+        </select>
+      </div>
+    </div>
+    <div class="planner-input-row">
+      <div class="planner-field">
+        <label>Module Size</label>
+        <select id="plannerModSize">
+          <option value="18m">18M</option>
+          <option value="36m">36M</option>
+          <option value="72m">72M</option>
+          <option value="any">Any Size</option>
+        </select>
+      </div>
+      <div class="planner-field">
+        <label>Show Date</label>
+        <input type="date" id="plannerDate" value="2026-04-19">
+      </div>
+    </div>
+    <button class="btn-primary" onclick="runPlanner()">Find Available Modules</button>
+    <div class="planner-results" id="plannerResults"></div>
+  </div>
+</div>
+
+<!-- ===== EVENTS PAGE ===== -->
+<div class="page" id="page-events">
+  <div class="section-title"><span>Events</span></div>
+  <div id="eventsList"></div>
+</div>
+
+<!-- ===== MEMBERS PAGE ===== -->
+<div class="page" id="page-members">
+  <div class="section-title"><span>Crew</span></div>
+  <div id="membersList"></div>
+</div>
+
+<!-- ===== INVENTORY PAGE ===== -->
+<div class="page" id="page-inventory">
+  <div class="section-title"><span>My Fireworks Inventory</span></div>
+  <div class="inv-tabs">
+    <button class="inv-tab active" onclick="switchInvTab(this,'products')">Tubes & Racks</button>
+    <button class="inv-tab" onclick="switchInvTab(this,'upload')">Upload / Sync</button>
+  </div>
+  <div id="inv-products"></div>
+  <div id="inv-upload" style="display:none;">
+    <div class="upload-zone" onclick="showToast('File picker would open here')">
+      <div class="uz-icon">📥</div>
+      <div class="uz-title">Upload Finale 3D Pull Sheet</div>
+      <div class="uz-sub">Auto-deducts used products from your inventory</div>
+    </div>
+    <div class="upload-zone" onclick="showToast('File picker would open here')">
+      <div class="uz-icon">🧾</div>
+      <div class="uz-title">Upload Purchase Order / Receipt</div>
+      <div class="uz-sub">Auto-adds purchased products to your inventory</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PROFILE MODAL ===== -->
+<div class="modal-overlay" id="profileModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
+      <div class="ss-logo-sm" style="filter:drop-shadow(0 0 10px rgba(232,112,10,0.3));"><span class="ss-logo-2nd">2<sup>nd</sup></span></div>
+      <div>
+        <div style="font-size:18px;font-weight:700;">Mike Walter</div>
+        <div style="font-size:12px;color:var(--ss-text-muted);">Admin — Solid Second</div>
+        <div style="font-size:11px;color:var(--ss-gold);margin-top:2px;">MoPyro Member</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+      <div class="qs-card" style="cursor:default;padding:12px;">
+        <div class="qs-num" style="font-size:20px;">70</div>
+        <div class="qs-label">COBRA Modules</div>
+      </div>
+      <div class="qs-card" style="cursor:default;padding:12px;">
+        <div class="qs-num" style="font-size:20px;">20</div>
+        <div class="qs-label">Fireball Tubes</div>
+      </div>
+      <div class="qs-card" style="cursor:default;padding:12px;">
+        <div class="qs-num" style="font-size:20px;">27</div>
+        <div class="qs-label">Craigco 35-shot</div>
+      </div>
+      <div class="qs-card" style="cursor:default;padding:12px;">
+        <div class="qs-num" style="font-size:20px;">16</div>
+        <div class="qs-label">Mini Slats</div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-modal-secondary" onclick="closeModal('profileModal')">Close</button>
+      <button class="btn-modal-primary" onclick="closeModal('profileModal');showPage('equipment')">My Equipment</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ADD EQUIPMENT MODAL ===== -->
+<div class="modal-overlay" id="addEquipModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <h2>Update Equipment</h2>
+    <div class="form-group">
+      <label>Crew Member</label>
+      <select id="editMember"></select>
+    </div>
+    <div class="form-group">
+      <label>Equipment Type</label>
+      <select id="editType">
+        <option value="">Select category...</option>
+        <option value="module">COBRA Module</option>
+        <option value="controller">COBRA Controller</option>
+        <option value="accessory">Accessory / Slats / Cables</option>
+        <option value="fireball">Fireball Tubes</option>
+        <option value="rack">Craigco Racks</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Item</label>
+      <input type="text" id="editItem" placeholder="e.g. 18M Module OC">
+    </div>
+    <div class="form-group">
+      <label>Quantity</label>
+      <input type="number" id="editQty" min="0" placeholder="How many?">
+    </div>
+    <div class="form-actions">
+      <button class="btn-modal-secondary" onclick="closeModal('addEquipModal')">Cancel</button>
+      <button class="btn-modal-primary" onclick="closeModal('addEquipModal');showToast('Equipment updated!')">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- FAB + TOAST -->
+<button class="fab visible" id="fabBtn" onclick="handleFab()">+</button>
+<div class="toast" id="toast"></div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="active" onclick="showPage('home')" id="nav-home">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    Home
+  </button>
+  <button onclick="showPage('equipment')" id="nav-equipment">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+    Equipment
+  </button>
+  <button onclick="showPage('planner')" id="nav-planner">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+    Planner
+  </button>
+  <button onclick="showPage('events')" id="nav-events">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    Events
+  </button>
+  <button onclick="showPage('members')" id="nav-members">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+    Crew
+  </button>
+  <button onclick="showPage('inventory')" id="nav-inventory">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+    Inventory
+  </button>
+</nav>
+
+<script>
+// ===== REAL CREW DATA =====
+const CREW = {
+  mike: {
+    name: 'Mike Walter', initials: 'MW', color: '#E8700A,#B85C1E',
+    sub: 'Admin — Father & Son (w/ Devon)', shared: true,
+    modules: [
+      { type: '18M', cue: 'OC', qty: 40 },
+      { type: '36M', cue: 'OC', qty: 9 },
+      { type: '72M', cue: 'OC', qty: 3 }
+    ],
+    accessories: [
+      { name: 'Mini Slats w/ Case', qty: 16 },
+      { name: 'M-Cable', qty: 1 },
+      { name: '18R2 Command Center', qty: 1 },
+      { name: '18R2 Controller', qty: 1 }
+    ],
+    fireballTubes: 20,
+    racks: [
+      { name: 'Craigco 35-shot', qty: 27 },
+      { name: 'Craigco 18-shot 60mm', qty: 10 }
+    ]
+  },
+  jim: {
+    name: 'Jim Rozycki', initials: 'JR', color: '#9C27B0,#6A1B9A',
+    sub: 'Shooter — w/ Jessica & Michelle',
+    modules: [
+      { type: '18M', cue: 'OC', qty: 30 },
+      { type: '72M', cue: 'OC', qty: 6 },
+      { type: '36M', cue: 'OC', qty: 2 }
+    ],
+    accessories: [],
+    fireballTubes: 40, // 6 large + 3 medium + 31 small
+    racks: [
+      { name: 'Craigco 2.5" (rack of 12)', qty: 16 },
+      { name: 'Craigco 3" (rack of 12)', qty: 13 },
+      { name: 'Craigco 4" (rack of 8)', qty: 4 }
+    ]
+  },
+  ron: {
+    name: 'Ron Green', initials: 'RG', color: '#4CAF50,#2E7D32',
+    sub: "Pyrogranpa — Bobby's equip on loan",
+    modules: [
+      { type: '18M', cue: 'OC', qty: 5 }
+    ],
+    accessories: [],
+    fireballTubes: 0,
+    racks: []
+  },
+  eric: {
+    name: 'Eric Eischholz', initials: 'EE', color: '#795548,#4E342E',
+    sub: 'Shooter',
+    modules: [
+      { type: '36M', cue: 'OC', qty: 2 },
+      { type: '18M', cue: 'OC', qty: 3 }
+    ],
+    accessories: [
+      { name: 'Slats', qty: 6 },
+      { name: '50\' Cables', qty: 6 }
+    ],
+    fireballTubes: 7, // 5 standard + 2x 5-gallon
+    racks: []
+  },
+  justin: {
+    name: 'Justin Nelson', initials: 'JN', color: '#3F51B5,#283593',
+    sub: 'Shooter',
+    modules: [
+      { type: '18M', cue: 'OC', qty: 1 }
+    ],
+    accessories: [],
+    fireballTubes: 17,
+    racks: []
+  },
+  archer: {
+    name: 'Archer Heibel', initials: 'AH', color: '#FF9800,#E65100',
+    sub: 'Shooter',
+    modules: [
+      { type: '18M', cue: 'OC', qty: 5 }
+    ],
+    accessories: [],
+    fireballTubes: 0,
+    racks: []
+  },
+  david: {
+    name: 'David Thompson', initials: 'DT', color: '#2196F3,#1565C0',
+    sub: 'Shooter / Designer',
+    modules: [
+      { type: '18M', cue: 'OC', qty: 9 },
+      { type: '18M', cue: 'QP', qty: 4 },
+      { type: '36M', cue: 'OC', qty: 6 },
+      { type: '36M', cue: 'QP', qty: 8 },
+      { type: '72M', cue: 'OC', qty: 1 }
+    ],
+    accessories: [],
+    fireballTubes: 0,
+    racks: []
+  },
+  james: {
+    name: 'James & Diana', initials: 'JD', color: '#E91E63,#AD1457',
+    sub: 'Couple — Shared equipment', shared: true,
+    modules: [],
+    accessories: [],
+    fireballTubes: 0,
+    racks: []
+  },
+  dan: {
+    name: 'Dan Brague', initials: 'DB', color: '#00BCD4,#00838F',
+    sub: 'Shooter — w/ Michelle',
+    modules: [],
+    accessories: [],
+    fireballTubes: 0,
+    racks: []
+  },
+  greg: {
+    name: 'Greg Wooley', initials: 'GW', color: '#607D8B,#37474F',
+    sub: 'Shooter',
+    modules: [],
+    accessories: [],
+    fireballTubes: 0,
+    racks: []
+  }
+};
+
+// Tubes in Waterloo
+const WATERLOO_TUBES = [
+  { size: '5"', qty: 2, perRack: 5 },
+  { size: '4"', qty: 5, perRack: 5 },
+  { size: '3"', qty: 12, perRack: 5 }
+];
+
+// Jatho Tubes
+const JATHO_TUBES = [
+  { size: '3"×5', racks: 24, total: 120 },
+  { size: '4"×5', racks: 11, total: 55 },
+  { size: '5"×5', racks: 2, total: 10 },
+  { size: '6"×5', racks: 2, total: 10 }
+];
+
+const EVENTS = [
+  {
+    title: 'Spring Demo Shoot', month: 'Apr', day: 19,
+    sub: "Mike Walter's show — Private property",
+    lead: 'Mike Walter', loadIn: '4:00 PM', shootTime: '~8:30 PM',
+    assignments: [
+      { member: 'mike', modules: 40, type: '18M', cue: 'OC' },
+      { member: 'jim', modules: 20, type: '18M', cue: 'OC' },
+      { member: 'ron', modules: 5, type: '18M', cue: 'OC' },
+      { member: 'eric', modules: 5, type: '18M', cue: 'OC' },
+      { member: 'archer', modules: 2, type: '18M', cue: 'OC' }
+    ],
+    crew: ['mike','jim','ron','eric','archer','justin']
+  },
+  {
+    title: 'Memorial Day — Club Shoot', month: 'May', day: 24,
+    sub: 'Jim Rozycki hosting — MoPyro event',
+    lead: 'Jim Rozycki', loadIn: '3:00 PM', shootTime: '~9:00 PM',
+    assignments: [
+      { member: 'jim', modules: 38, type: '18M/72M', cue: 'OC' },
+      { member: 'mike', modules: 40, type: '18M', cue: 'OC' },
+      { member: 'ron', modules: 5, type: '18M', cue: 'OC' },
+      { member: 'eric', modules: 5, type: '18M', cue: 'OC' },
+      { member: 'archer', modules: 5, type: '18M', cue: 'OC' },
+      { member: 'justin', modules: 1, type: '18M', cue: 'OC' }
+    ],
+    crew: ['mike','jim','ron','eric','archer','justin','david','dan']
+  },
+  {
+    title: '4th of July — City Show', month: 'Jul', day: 4,
+    sub: 'David Thompson lead — Full crew',
+    lead: 'David Thompson', loadIn: '2:00 PM', shootTime: '~9:30 PM',
+    assignments: [],
+    crew: ['mike','jim','ron','eric','archer','justin','david','james','dan','greg']
+  }
+];
+
+// ===== HELPERS =====
+function getModuleMultiplier(type) {
+  if (type === '72M') return 4;
+  if (type === '36M') return 2;
+  return 1; // 18M = 1 module
+}
+function getTotalModules(member) {
+  return member.modules.reduce((sum, m) => sum + m.qty * getModuleMultiplier(m.type), 0);
+}
+function getAllModules() {
+  return Object.values(CREW).reduce((sum, m) => sum + getTotalModules(m), 0);
+}
+function getAllTubes() {
+  return Object.values(CREW).reduce((sum, m) => sum + (m.fireballTubes || 0), 0);
+}
+
+// ===== SPLASH (bulletproof — always dismisses) =====
+function dismissSplash() {
+  var s = document.getElementById('splash');
+  if (s) { s.classList.add('fade'); setTimeout(function(){ s.style.display = 'none'; }, 600); }
+}
+setTimeout(dismissSplash, 2200);
+// Backup: also dismiss on tap/click, and a failsafe at 5s
+document.addEventListener('click', function once(){ dismissSplash(); document.removeEventListener('click', once); });
+setTimeout(dismissSplash, 5000);
+
+// ===== NAVIGATION =====
+function showPage(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + pageId).classList.add('active');
+  document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.remove('active'));
+  const navBtn = document.getElementById('nav-' + pageId);
+  if (navBtn) navBtn.classList.add('active');
+  window.scrollTo(0, 0);
+  document.getElementById('fabBtn').dataset.page = pageId;
+}
+
+// ===== TOAST =====
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ===== MODALS =====
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+});
+
+// ===== FAB =====
+function handleFab() {
+  const page = document.getElementById('fabBtn').dataset.page || 'home';
+  if (page === 'equipment' || page === 'members') openModal('addEquipModal');
+  else if (page === 'events') showToast('New Event form coming soon');
+  else if (page === 'inventory') { switchInvTab(document.querySelectorAll('.inv-tab')[1], 'upload'); showPage('inventory'); }
+  else openModal('addEquipModal');
+}
+
+// ===== RENDER EQUIPMENT PAGE =====
+let currentFilter = 'all';
+
+function renderEquipment(filter) {
+  currentFilter = filter;
+  const container = document.getElementById('equipmentList');
+  const members = filter === 'all' ? Object.keys(CREW) : [filter];
+  let html = '';
+
+  members.forEach(key => {
+    const m = CREW[key];
+    const totalMods = getTotalModules(m);
+    if (filter === 'all' && totalMods === 0 && !m.fireballTubes && !m.racks.length && !m.accessories.length) return;
+
+    html += '<div class="equip-section-title" style="margin-top:16px;"><span>' + m.name + (m.shared ? ' (Shared)' : '') + '</span><span class="es-line"></span></div>';
+
+    // Modules
+    m.modules.forEach(mod => {
+      const isQP = mod.cue === 'QP';
+      html += '<div class="equip-item">' +
+        '<div class="equip-item-left">' +
+        '<div class="equip-item-icon ' + (isQP ? 'cobra-qp' : 'cobra') + '">' + (isQP ? '🔌' : '📡') + '</div>' +
+        '<div><div class="equip-item-name">' + mod.type + ' Module <span class="type-tag ' + mod.cue.toLowerCase() + '">' + mod.cue + '</span></div>' +
+        '<div class="equip-item-sub">COBRA ' + (isQP ? 'Quick Plug' : 'Onboard Cues') + '</div></div></div>' +
+        '<div class="equip-item-qty">' + mod.qty + '</div></div>';
+    });
+
+    // Accessories
+    m.accessories.forEach(acc => {
+      html += '<div class="equip-item">' +
+        '<div class="equip-item-left">' +
+        '<div class="equip-item-icon accessory">🔧</div>' +
+        '<div><div class="equip-item-name">' + acc.name + '</div>' +
+        '<div class="equip-item-sub">Accessory</div></div></div>' +
+        '<div class="equip-item-qty">' + acc.qty + '</div></div>';
+    });
+
+    // Fireball Tubes
+    if (m.fireballTubes > 0) {
+      html += '<div class="equip-item">' +
+        '<div class="equip-item-left">' +
+        '<div class="equip-item-icon tube">🔥</div>' +
+        '<div><div class="equip-item-name">Fireball Tubes</div>' +
+        '<div class="equip-item-sub">Assorted sizes</div></div></div>' +
+        '<div class="equip-item-qty">' + m.fireballTubes + '</div></div>';
+    }
+
+    // Racks
+    m.racks.forEach(r => {
+      html += '<div class="equip-item">' +
+        '<div class="equip-item-left">' +
+        '<div class="equip-item-icon rack">🧱</div>' +
+        '<div><div class="equip-item-name">' + r.name + '</div>' +
+        '<div class="equip-item-sub">Craigco Rack</div></div></div>' +
+        '<div class="equip-item-qty">' + r.qty + '</div></div>';
+    });
+
+    if (totalMods === 0 && !m.fireballTubes && !m.racks.length && !m.accessories.length) {
+      html += '<div class="equip-item" style="opacity:0.5;"><div class="equip-item-left"><div class="equip-item-icon cobra">—</div><div><div class="equip-item-name">No equipment listed yet</div><div class="equip-item-sub">Tap + to add</div></div></div><div class="equip-item-qty">—</div></div>';
+    }
+  });
+
+  container.innerHTML = html;
+}
+
+function renderCrewSelector() {
+  const container = document.getElementById('crewSelector');
+  let html = '<div class="crew-chip active" onclick="selectCrew(this,\'all\')">All Crew</div>';
+  Object.keys(CREW).forEach(key => {
+    html += '<div class="crew-chip" onclick="selectCrew(this,\'' + key + '\')">' + CREW[key].name + '</div>';
+  });
+  container.innerHTML = html;
+}
+
+function selectCrew(el, who) {
+  document.querySelectorAll('.crew-chip').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+  else document.querySelector('.crew-chip').classList.add('active');
+  renderEquipment(who);
+}
+
+// ===== RENDER EVENTS =====
+function renderEvents() {
+  const container = document.getElementById('eventsList');
+  let html = '';
+  EVENTS.forEach((ev, i) => {
+    const totalMods = ev.assignments.reduce((s, a) => s + a.modules, 0);
+    html += '<div class="event-card-full" onclick="toggleEvent(this)">' +
+      '<div class="event-card-header">' +
+      '<div class="event-card-header-left">' +
+      '<div class="event-card-date"><div class="ecd-month">' + ev.month + '</div><div class="ecd-day">' + ev.day + '</div></div>' +
+      '<div><div class="event-card-title">' + ev.title + '</div><div class="event-card-sub">' + ev.sub + '</div></div></div>' +
+      '<span class="expand-indicator">▼</span></div>' +
+      '<div class="event-card-body">';
+
+    if (ev.assignments.length > 0) {
+      ev.assignments.forEach(a => {
+        const m = CREW[a.member];
+        html += '<div class="event-equip-row">' +
+          '<span class="eer-name">' + m.name + '</span>' +
+          '<span class="eer-detail">' + a.modules + '× ' + a.type + ' <span class="type-tag ' + a.cue.toLowerCase() + '" style="font-size:8px">' + a.cue + '</span></span>' +
+          '<span class="eer-qty">' + a.modules + '</span></div>';
+      });
+      html += '<div class="event-total-row"><span>Total Modules</span><span class="etr-qty">' + totalMods + '</span></div>';
+
+      // Check for mixed types
+      const cueTypes = [...new Set(ev.assignments.map(a => a.cue))];
+      if (cueTypes.length > 1) {
+        const ocCount = ev.assignments.filter(a => a.cue === 'OC').reduce((s,a) => s + a.modules, 0);
+        const qpCount = ev.assignments.filter(a => a.cue === 'QP').reduce((s,a) => s + a.modules, 0);
+        html += '<div style="margin-top:8px;font-size:11px;color:var(--ss-gold);">⚠ Mixed: ' + ocCount + ' OC + ' + qpCount + ' QP — prep ignition wires accordingly</div>';
+      }
+    } else {
+      html += '<div style="font-size:13px;color:var(--ss-text-muted);padding:8px 0;">Equipment assignments in progress</div>';
+    }
+
+    // Crew avatars
+    html += '<div class="event-crew-going" style="margin-top:10px;">';
+    ev.crew.forEach(key => {
+      const m = CREW[key];
+      html += '<div class="event-crew-avatar" style="background:linear-gradient(135deg,' + m.color + ');">' + m.initials + '</div>';
+    });
+    html += '<span style="font-size:11px;color:var(--ss-text-muted);margin-left:8px;align-self:center;">' + ev.crew.length + ' going</span></div>';
+    html += '</div></div>';
+  });
+  container.innerHTML = html;
+}
+
+function toggleEvent(card) {
+  card.classList.toggle('expanded');
+}
+
+// ===== RENDER MEMBERS =====
+function renderMembers() {
+  const container = document.getElementById('membersList');
+  let html = '';
+  Object.keys(CREW).forEach(key => {
+    const m = CREW[key];
+    const totalMods = getTotalModules(m);
+    const mainMod = m.modules.length > 0 ? m.modules[0] : null;
+    html += '<div class="member-row" onclick="selectCrew(null,\'' + key + '\');showPage(\'equipment\')">' +
+      '<div class="member-row-avatar" style="background:linear-gradient(135deg,' + m.color + ');">' + m.initials + '</div>' +
+      '<div class="member-row-info">' +
+      '<div class="member-row-name">' + m.name + (m.shared ? ' <span class="shared-badge">Shared</span>' : '') + '</div>' +
+      '<div class="member-row-sub">' + m.sub + '</div></div>' +
+      '<div class="member-row-equip">' +
+      '<div class="mre-num">' + (totalMods || '—') + '</div>' +
+      '<div class="mre-label">' + (mainMod ? mainMod.type + ' ' + mainMod.cue : 'modules') + '</div></div></div>';
+  });
+  container.innerHTML = html;
+}
+
+// ===== RENDER INVENTORY (Tubes & Racks) =====
+function renderInventory() {
+  const container = document.getElementById('inv-products');
+  let html = '';
+
+  html += '<div class="equip-section-title"><span>Tubes in Waterloo</span><span class="es-line"></span></div>';
+  WATERLOO_TUBES.forEach(t => {
+    html += '<div class="inv-product-row"><span class="inv-product-name">' + t.size + ' Tubes</span><span class="inv-product-size">' + t.qty + ' racks of ' + t.perRack + '</span><span class="inv-product-qty">' + (t.qty * t.perRack) + '</span></div>';
+  });
+
+  html += '<div class="equip-section-title" style="margin-top:14px;"><span>Jatho Tubes</span><span class="es-line"></span></div>';
+  JATHO_TUBES.forEach(t => {
+    html += '<div class="inv-product-row"><span class="inv-product-name">' + t.size + ' Tubes</span><span class="inv-product-size">' + t.racks + ' racks</span><span class="inv-product-qty">' + t.total + '</span></div>';
+  });
+
+  html += '<div class="equip-section-title" style="margin-top:14px;"><span>Crew Fireball Tubes</span><span class="es-line"></span></div>';
+  Object.keys(CREW).forEach(key => {
+    const m = CREW[key];
+    if (m.fireballTubes > 0) {
+      html += '<div class="inv-product-row"><span class="inv-product-name">' + m.name + '</span><span class="inv-product-size">Assorted</span><span class="inv-product-qty">' + m.fireballTubes + '</span></div>';
+    }
+  });
+
+  container.innerHTML = html;
+}
+
+// ===== PLANNER LOGIC =====
+function runPlanner() {
+  const needed = parseInt(document.getElementById('plannerModCount').value) || 0;
+  const typeFilter = document.getElementById('plannerModType').value;
+  const sizeFilter = document.getElementById('plannerModSize').value;
+  const container = document.getElementById('plannerResults');
+
+  // Gather available modules matching criteria
+  let available = [];
+  Object.keys(CREW).forEach(key => {
+    const m = CREW[key];
+    m.modules.forEach(mod => {
+      const typeMatch = typeFilter === 'any' || mod.cue.toLowerCase() === typeFilter;
+      const sizeMatch = sizeFilter === 'any' || mod.type.toLowerCase() === sizeFilter;
+      if (typeMatch && sizeMatch) {
+        available.push({ member: key, ...mod, crewName: m.name, initials: m.initials, color: m.color });
+      }
+    });
+  });
+
+  // Sort: mike first, then by qty desc
+  available.sort((a, b) => {
+    if (a.member === 'mike') return -1;
+    if (b.member === 'mike') return 1;
+    return b.qty - a.qty;
+  });
+
+  const totalAvail = available.reduce((s, a) => s + a.qty, 0);
+  let html = '';
+
+  if (totalAvail >= needed) {
+    html += '<div class="pr-summary"><strong>' + totalAvail + ' matching modules available across ' + available.length + ' sources.</strong><br>You need ' + needed + ' — you\'re covered!</div>';
+  } else {
+    html += '<div class="pr-summary warning"><strong>Only ' + totalAvail + ' matching modules found.</strong><br>You need ' + needed + ' — ' + (needed - totalAvail) + ' short. Try "Either" type or "Any Size" for more options.</div>';
+  }
+
+  let allocated = 0;
+  available.forEach(a => {
+    const useQty = Math.min(a.qty, needed - allocated);
+    if (useQty <= 0 && allocated >= needed) return;
+    const isOwn = a.member === 'mike';
+    html += '<div class="pr-borrow-card">' +
+      '<div class="pr-borrow-left">' +
+      '<div class="pr-borrow-avatar" style="background:linear-gradient(135deg,' + a.color + ');">' + a.initials + '</div>' +
+      '<div><div class="pr-borrow-name">' + a.crewName + '</div>' +
+      '<div class="pr-borrow-detail">' + a.type + ' <span class="type-tag ' + a.cue.toLowerCase() + '">' + a.cue + '</span> — ' + a.qty + ' available</div></div></div>' +
+      '<div class="pr-borrow-right">' +
+      '<div class="pr-borrow-qty" style="color:' + (isOwn ? 'var(--ss-success)' : 'var(--ss-orange)') + ';">' + (useQty > 0 ? useQty : a.qty) + '</div>' +
+      '<div class="pr-borrow-type">modules</div>' +
+      (isOwn ? '' : '<button class="btn-sm" onclick="this.textContent=\'Sent!\';this.classList.add(\'sent\');showToast(\'Request sent to ' + a.crewName + '\')">Request</button>') +
+      '</div></div>';
+    allocated += useQty;
+  });
+
+  // Show backup QP tip if filtering OC
+  if (typeFilter === 'oc') {
+    const qpAvail = [];
+    Object.keys(CREW).forEach(key => {
+      CREW[key].modules.forEach(mod => {
+        if (mod.cue === 'QP') qpAvail.push({ name: CREW[key].name, qty: mod.qty, type: mod.type });
+      });
+    });
+    if (qpAvail.length > 0) {
+      html += '<div style="margin-top:12px;padding:12px;background:rgba(66,165,245,0.06);border:1px solid rgba(66,165,245,0.15);border-radius:8px;font-size:12px;color:var(--qp-color);">💡 <strong>QP backup:</strong> ';
+      html += qpAvail.map(q => q.name + ' has ' + q.qty + '× ' + q.type + ' QP').join(', ');
+      html += '. Remember: QP modules need quick plug ignition wire prep.</div>';
+    }
+  }
+
+  container.innerHTML = html;
+  container.classList.add('show');
+}
+
+// ===== INV TABS =====
+function switchInvTab(btn, tab) {
+  document.querySelectorAll('.inv-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('inv-products').style.display = tab === 'products' ? 'block' : 'none';
+  document.getElementById('inv-upload').style.display = tab === 'upload' ? 'block' : 'none';
+}
+
+// ===== POPULATE EDIT MODAL MEMBERS =====
+function populateEditMembers() {
+  const sel = document.getElementById('editMember');
+  sel.innerHTML = Object.keys(CREW).map(k => '<option value="' + k + '">' + CREW[k].name + '</option>').join('');
+}
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', function() {
+  try {
+    document.getElementById('stat-modules').textContent = getAllModules();
+    document.getElementById('stat-tubes').textContent = getAllTubes();
+    document.getElementById('stat-crew').textContent = Object.keys(CREW).length;
+    renderCrewSelector();
+    renderEquipment('all');
+    renderEvents();
+    renderMembers();
+    renderInventory();
+    populateEditMembers();
+  } catch(e) { console.error('Init error:', e); }
+  dismissSplash();
+});
+</script>
+</body>
+</html>
