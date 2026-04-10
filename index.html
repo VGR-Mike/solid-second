@@ -215,10 +215,13 @@
     position: relative; margin-bottom: 16px;
   }
   .crew-selector-wrap::after {
-    content: ''; position: absolute; top: 0; right: 0;
-    width: 40px; height: calc(100% - 6px);
-    background: linear-gradient(90deg, transparent, var(--ss-dark));
+    content: '\u203A'; position: absolute; top: 0; right: 0;
+    width: 32px; height: calc(100% - 12px);
+    background: linear-gradient(90deg, transparent, var(--ss-dark) 60%);
     pointer-events: none; z-index: 1;
+    display: flex; align-items: center; justify-content: flex-end;
+    font-size: 20px; color: var(--ss-orange); opacity: 0.6;
+    padding-right: 4px;
   }
   .crew-selector {
     display: flex; gap: 6px; overflow-x: auto;
