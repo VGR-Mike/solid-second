@@ -497,7 +497,85 @@
     .quick-stats { grid-template-columns: repeat(4, 1fr); }
     .page { padding: 20px 28px 40px; max-width: 960px; }
   }
+  /* ===== INVENTORY REVAMP ===== */
+  .inv-category-tabs {
+    display: flex; gap: 0; overflow-x: auto; margin-bottom: 14px;
+    border-bottom: 2px solid var(--ss-border-subtle);
+    -webkit-overflow-scrolling: touch;
+  }
+  .inv-category-tabs::-webkit-scrollbar { display: none; }
+  .inv-cat-tab {
+    background: none; border: none; color: var(--ss-text-muted);
+    font-size: 11px; font-weight: 600; padding: 8px 14px; cursor: pointer;
+    border-bottom: 2px solid transparent; margin-bottom: -2px;
+    transition: all 0.2s; white-space: nowrap; flex-shrink: 0;
+  }
+  .inv-cat-tab.active { color: var(--ss-orange); border-bottom-color: var(--ss-orange); }
+  .inv-cat-tab .cat-count {
+    font-size: 9px; background: rgba(232,112,10,0.15); color: var(--ss-orange);
+    padding: 1px 5px; border-radius: 8px; margin-left: 4px; font-weight: 700;
+  }
+  .inv-search-bar {
+    display: flex; gap: 8px; margin-bottom: 14px;
+  }
+  .inv-search-bar input {
+    flex: 1; background: rgba(255,255,255,0.04);
+    border: 1px solid var(--ss-border-subtle); color: var(--ss-text);
+    padding: 10px 14px; border-radius: 10px; font-size: 13px; outline: none;
+  }
+  .inv-search-bar input:focus { border-color: var(--ss-orange); }
+  .inv-search-bar input::placeholder { color: #555; }
+  .inv-item-row {
+    background: var(--ss-card); border-radius: 10px; padding: 12px 14px;
+    border: 1px solid var(--ss-border-subtle); margin-bottom: 6px;
+    display: flex; align-items: center; gap: 12px;
+    transition: all 0.2s;
+  }
+  .inv-item-row:hover { border-color: var(--ss-border); }
+  .inv-item-info { flex: 1; min-width: 0; }
+  .inv-item-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .inv-item-meta { font-size: 11px; color: var(--ss-text-muted); margin-top: 2px; }
+  .inv-item-meta span { margin-right: 10px; }
+  .inv-item-qty { font-size: 20px; font-weight: 800; color: var(--ss-orange); min-width: 40px; text-align: right; }
+  .inv-item-video {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: rgba(229,57,53,0.12); color: var(--ss-red);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; cursor: pointer; flex-shrink: 0; text-decoration: none;
+    transition: all 0.2s;
+  }
+  .inv-item-video:hover { background: rgba(229,57,53,0.25); }
+  .inv-upload-area {
+    border: 2px dashed var(--ss-border); border-radius: 14px;
+    padding: 28px 20px; text-align: center; cursor: pointer;
+    transition: all 0.2s; margin-bottom: 12px; position: relative;
+  }
+  .inv-upload-area:hover { border-color: var(--ss-orange); background: rgba(232,112,10,0.03); }
+  .inv-upload-area input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .inv-stats-bar {
+    display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;
+  }
+  .inv-stat {
+    background: var(--ss-card); border: 1px solid var(--ss-border-subtle);
+    border-radius: 10px; padding: 10px 14px; flex: 1; min-width: 100px; text-align: center;
+  }
+  .inv-stat-num { font-size: 20px; font-weight: 800; color: var(--ss-orange); }
+  .inv-stat-label { font-size: 10px; color: var(--ss-text-muted); }
+  .inv-empty {
+    text-align: center; padding: 40px 20px; color: var(--ss-text-muted);
+  }
+  .inv-empty-icon { font-size: 40px; margin-bottom: 10px; opacity: 0.3; }
+  .inv-empty-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; color: var(--ss-text); }
+  .inv-empty-sub { font-size: 12px; line-height: 1.5; }
+  .btn-export {
+    background: rgba(255,255,255,0.05); color: var(--ss-text-muted);
+    border: 1px solid var(--ss-border-subtle); padding: 8px 16px;
+    border-radius: 8px; font-size: 11px; font-weight: 600; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-export:hover { border-color: var(--ss-orange); color: var(--ss-orange); }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -653,22 +731,24 @@
 
 <!-- ===== INVENTORY PAGE ===== -->
 <div class="page" id="page-inventory">
-  <div class="section-title"><span>My Fireworks Inventory</span></div>
-  <div class="inv-tabs">
-    <button class="inv-tab active" onclick="switchInvTab(this,'products')">Tubes & Racks</button>
-    <button class="inv-tab" onclick="switchInvTab(this,'upload')">Upload / Sync</button>
-  </div>
-  <div id="inv-products"></div>
-  <div id="inv-upload" style="display:none;">
-    <div class="upload-zone" onclick="showToast('File picker would open here')">
-      <div style="font-size:28px;margin-bottom:6px;opacity:0.5;">&#x1F4E5;</div>
-      <div style="font-size:13px;font-weight:700;margin-bottom:3px;">Upload Finale 3D Pull Sheet</div>
-      <div style="font-size:11px;color:var(--ss-text-muted);">Auto-deducts used products from your inventory</div>
+  <div class="section-title">
+    <span>Fireworks Inventory</span>
+    <div style="display:flex;gap:6px;">
+      <button class="btn-export" onclick="exportInventory()">Export</button>
     </div>
-    <div class="upload-zone" onclick="showToast('File picker would open here')">
-      <div style="font-size:28px;margin-bottom:6px;opacity:0.5;">&#x1F9FE;</div>
-      <div style="font-size:13px;font-weight:700;margin-bottom:3px;">Upload Purchase Order / Receipt</div>
-      <div style="font-size:11px;color:var(--ss-text-muted);">Auto-adds purchased products to your inventory</div>
+  </div>
+  <div class="inv-stats-bar" id="invStats"></div>
+  <div class="inv-search-bar">
+    <input type="text" id="invSearch" placeholder="Search products..." oninput="filterInventory()">
+  </div>
+  <div class="inv-category-tabs" id="invCatTabs"></div>
+  <div id="invProductList"></div>
+  <div id="invUploadSection">
+    <div class="inv-upload-area" id="invUploadZone">
+      <div style="font-size:32px;margin-bottom:8px;opacity:0.4;">&#x1F4CB;</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px;">Upload Inventory Spreadsheet</div>
+      <div style="font-size:12px;color:var(--ss-text-muted);line-height:1.5;">Drop your .xlsx file here or tap to browse.<br>Uses the Solid Second Inventory Template format.</div>
+      <input type="file" id="invFileInput" accept=".xlsx,.xls" onchange="handleInventoryUpload(this)">
     </div>
   </div>
 </div>
@@ -721,7 +801,7 @@
     </div>
     <div class="form-group">
       <label>Equipment Type</label>
-      <select id="editType">
+      <select id="editType" onchange="updateEditItem()">
         <option value="">Select category...</option>
         <option value="module">COBRA Module</option>
         <option value="controller">COBRA Controller</option>
@@ -732,7 +812,16 @@
     </div>
     <div class="form-group">
       <label>Item</label>
-      <input type="text" id="editItem" placeholder="e.g. 18M Module OC">
+      <select id="editItem" onchange="updateEditCue()">
+        <option value="">Select type first...</option>
+      </select>
+    </div>
+    <div class="form-group" id="editCueGroup" style="display:none;">
+      <label>Cue Type</label>
+      <select id="editCue">
+        <option value="OC">Onboard Cues (OC)</option>
+        <option value="QP">Quick Plug (QP)</option>
+      </select>
     </div>
     <div class="form-group">
       <label>Quantity</label>
@@ -740,7 +829,7 @@
     </div>
     <div class="form-actions">
       <button class="btn-modal-secondary" onclick="closeModal('addEquipModal')">Cancel</button>
-      <button class="btn-modal-primary" onclick="closeModal('addEquipModal');showToast('Equipment updated!')">Save</button>
+      <button class="btn-modal-primary" onclick="saveEquipment()">Save</button>
     </div>
   </div>
 </div>
@@ -900,18 +989,7 @@ const CREW = {
   }
 };
 
-const WATERLOO_TUBES = [
-  { size: '5"', qty: 2, perRack: 5 },
-  { size: '4"', qty: 5, perRack: 5 },
-  { size: '3"', qty: 12, perRack: 5 }
-];
-
-const JATHO_TUBES = [
-  { size: '3"x5', racks: 24, total: 120 },
-  { size: '4"x5', racks: 11, total: 55 },
-  { size: '5"x5', racks: 2, total: 10 },
-  { size: '6"x5', racks: 2, total: 10 }
-];
+// (tube/rack constants removed — inventory is now upload-driven)
 
 const EVENTS = [
   {
@@ -1155,30 +1233,223 @@ function renderMembers() {
   container.innerHTML = html;
 }
 
-// ===== RENDER INVENTORY =====
-function renderInventory() {
-  const container = document.getElementById('inv-products');
-  let html = '';
+// ===== INVENTORY SYSTEM =====
+const INV_CATEGORIES = ['Single Shots','500G','Comets','Mines','Slices','Zippers','200G','Fountain-Strobes','1.3'];
+const INV_CAT_COLORS = {'Single Shots':'#E8700A','500G':'#C62828','Comets':'#1565C0','Mines':'#2E7D32','Slices':'#6A1B9A','Zippers':'#E65100','200G':'#00838F','Fountain-Strobes':'#37474F','1.3':'#B71C1C'};
+let inventoryData = {}; // { 'Single Shots': [{name,partNum,brand,size,qty,videoLink,duration,liftTime}], ... }
+let currentInvCat = 'all';
 
-  html += '<div class="equip-section-title"><span>Tubes in Waterloo</span><span class="es-line"></span></div>';
-  WATERLOO_TUBES.forEach(t => {
-    html += '<div class="inv-product-row"><span class="inv-product-name">' + t.size + ' Tubes</span><span class="inv-product-size">' + t.qty + ' racks of ' + t.perRack + '</span><span class="inv-product-qty">' + (t.qty * t.perRack) + '</span></div>';
-  });
+function loadInventoryFromStorage() {
+  try {
+    var saved = localStorage.getItem('ss_inventory');
+    if (saved) { inventoryData = JSON.parse(saved); return true; }
+  } catch(e) {}
+  return false;
+}
 
-  html += '<div class="equip-section-title" style="margin-top:14px;"><span>Jatho Tubes</span><span class="es-line"></span></div>';
-  JATHO_TUBES.forEach(t => {
-    html += '<div class="inv-product-row"><span class="inv-product-name">' + t.size + ' Tubes</span><span class="inv-product-size">' + t.racks + ' racks</span><span class="inv-product-qty">' + t.total + '</span></div>';
-  });
+function saveInventoryToStorage() {
+  try { localStorage.setItem('ss_inventory', JSON.stringify(inventoryData)); } catch(e) {}
+}
 
-  html += '<div class="equip-section-title" style="margin-top:14px;"><span>Crew Fireball Tubes</span><span class="es-line"></span></div>';
-  Object.keys(CREW).forEach(key => {
-    const m = CREW[key];
-    if (m.fireballTubes > 0) {
-      html += '<div class="inv-product-row"><span class="inv-product-name">' + m.name + '</span><span class="inv-product-size">Assorted</span><span class="inv-product-qty">' + m.fireballTubes + '</span></div>';
+function handleInventoryUpload(input) {
+  if (!input.files || !input.files[0]) return;
+  var file = input.files[0];
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var wb = XLSX.read(e.target.result, { type: 'array' });
+      inventoryData = {};
+      wb.SheetNames.forEach(function(sheetName) {
+        var ws = wb.Sheets[sheetName];
+        var rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        var items = [];
+        // Find header row (look for 'Product Name' or 'Description')
+        var headerIdx = -1;
+        for (var i = 0; i < Math.min(rows.length, 5); i++) {
+          var row = rows[i];
+          if (row && row.length > 0) {
+            var first = String(row[0] || '').toLowerCase();
+            if (first === 'product name' || first === 'description') { headerIdx = i; break; }
+          }
+        }
+        if (headerIdx === -1) headerIdx = 1; // default: row 2 is header
+
+        for (var r = headerIdx + 1; r < rows.length; r++) {
+          var row = rows[r];
+          if (!row || !row[0] || String(row[0]).trim() === '') continue;
+          var name = String(row[0] || '').trim();
+          var partNum = String(row[1] || '').trim().toUpperCase();
+          var brand = String(row[2] || '').trim();
+          var size = String(row[3] || '').trim();
+          var qty = parseInt(row[4]) || 0;
+          var videoLink = String(row[5] || '').trim();
+          var duration = String(row[6] || '').trim();
+          var liftTime = String(row[7] || '').trim();
+          if (qty <= 0) continue;
+          // Clean up 'undefined' or 'nan'
+          if (partNum === 'UNDEFINED' || partNum === 'NAN') partNum = '';
+          if (brand === 'undefined' || brand === 'nan') brand = '';
+          if (size === 'undefined' || size === 'nan') size = '';
+          if (videoLink === 'undefined' || videoLink === 'nan') videoLink = '';
+          if (duration === 'undefined' || duration === 'nan') duration = '';
+          if (liftTime === 'undefined' || liftTime === 'nan') liftTime = '';
+          items.push({ name:name, partNum:partNum, brand:brand, size:size, qty:qty, videoLink:videoLink, duration:duration, liftTime:liftTime });
+        }
+        // Sort by brand then part number
+        items.sort(function(a,b) {
+          var ba = (a.brand || 'zzz').toLowerCase(), bb = (b.brand || 'zzz').toLowerCase();
+          if (ba !== bb) return ba < bb ? -1 : 1;
+          var pa = (a.partNum || 'zzz').toLowerCase(), pb = (b.partNum || 'zzz').toLowerCase();
+          return pa < pb ? -1 : pa > pb ? 1 : 0;
+        });
+        if (items.length > 0) inventoryData[sheetName] = items;
+      });
+      saveInventoryToStorage();
+      renderInventory();
+      showToast('Inventory loaded: ' + getTotalInvItems() + ' products');
+    } catch(err) {
+      showToast('Error reading file: ' + err.message);
     }
+  };
+  reader.readAsArrayBuffer(file);
+  input.value = '';
+}
+
+function getTotalInvItems() {
+  var total = 0;
+  Object.values(inventoryData).forEach(function(items) { total += items.length; });
+  return total;
+}
+
+function getTotalInvPieces() {
+  var total = 0;
+  Object.values(inventoryData).forEach(function(items) { items.forEach(function(it) { total += it.qty; }); });
+  return total;
+}
+
+function getInvBrands() {
+  var brands = {};
+  Object.values(inventoryData).forEach(function(items) { items.forEach(function(it) { if (it.brand) brands[it.brand] = true; }); });
+  return Object.keys(brands).length;
+}
+
+function renderInventory() {
+  var hasCats = Object.keys(inventoryData).length > 0;
+
+  // Stats bar
+  var statsEl = document.getElementById('invStats');
+  if (hasCats) {
+    statsEl.innerHTML = '<div class="inv-stat"><div class="inv-stat-num">' + getTotalInvItems() + '</div><div class="inv-stat-label">Products</div></div>' +
+      '<div class="inv-stat"><div class="inv-stat-num">' + getTotalInvPieces().toLocaleString() + '</div><div class="inv-stat-label">Total Pieces</div></div>' +
+      '<div class="inv-stat"><div class="inv-stat-num">' + Object.keys(inventoryData).length + '</div><div class="inv-stat-label">Categories</div></div>' +
+      '<div class="inv-stat"><div class="inv-stat-num">' + getInvBrands() + '</div><div class="inv-stat-label">Brands</div></div>';
+  } else {
+    statsEl.innerHTML = '';
+  }
+
+  // Category tabs
+  var tabsEl = document.getElementById('invCatTabs');
+  if (hasCats) {
+    var tabsHtml = '<button class="inv-cat-tab' + (currentInvCat === 'all' ? ' active' : '') + '" onclick="switchInvCat(this,\'all\')">All<span class="cat-count">' + getTotalInvItems() + '</span></button>';
+    Object.keys(inventoryData).forEach(function(cat) {
+      tabsHtml += '<button class="inv-cat-tab' + (currentInvCat === cat ? ' active' : '') + '" onclick="switchInvCat(this,\'' + cat.replace(/'/g,"\\'") + '\')">' + cat + '<span class="cat-count">' + inventoryData[cat].length + '</span></button>';
+    });
+    tabsEl.innerHTML = tabsHtml;
+    tabsEl.style.display = 'flex';
+  } else {
+    tabsEl.innerHTML = '';
+    tabsEl.style.display = 'none';
+  }
+
+  // Upload section — always show but smaller if we have data
+  var uploadEl = document.getElementById('invUploadSection');
+  if (hasCats) {
+    uploadEl.querySelector('.inv-upload-area').style.padding = '14px 16px';
+    uploadEl.querySelector('[style*="font-size:32px"]').style.display = 'none';
+    uploadEl.querySelector('[style*="font-size:14px"]').textContent = 'Upload New / Updated Inventory';
+    uploadEl.querySelector('[style*="font-size:12px"]').textContent = 'Re-upload to replace current inventory data.';
+  }
+
+  renderInvProducts();
+}
+
+function renderInvProducts() {
+  var container = document.getElementById('invProductList');
+  var searchTerm = (document.getElementById('invSearch').value || '').toLowerCase();
+  var cats = currentInvCat === 'all' ? Object.keys(inventoryData) : [currentInvCat];
+
+  if (Object.keys(inventoryData).length === 0) {
+    container.innerHTML = '<div class="inv-empty"><div class="inv-empty-icon">&#x1F386;</div><div class="inv-empty-title">No Inventory Loaded</div><div class="inv-empty-sub">Upload your Solid Second Inventory spreadsheet<br>to see your fireworks catalog here.</div></div>';
+    return;
+  }
+
+  var html = '';
+  var shown = 0;
+  cats.forEach(function(cat) {
+    var items = inventoryData[cat] || [];
+    var filtered = items.filter(function(it) {
+      if (!searchTerm) return true;
+      return it.name.toLowerCase().indexOf(searchTerm) >= 0 ||
+        it.partNum.toLowerCase().indexOf(searchTerm) >= 0 ||
+        it.brand.toLowerCase().indexOf(searchTerm) >= 0;
+    });
+    if (filtered.length === 0) return;
+
+    var catColor = INV_CAT_COLORS[cat] || 'var(--ss-orange)';
+    html += '<div class="equip-section-title" style="margin-top:' + (shown > 0 ? '18' : '4') + 'px;"><span style="color:' + catColor + ';">' + cat + '</span><span class="es-line"></span><span style="font-size:10px;color:var(--ss-text-muted);">' + filtered.length + ' items</span></div>';
+
+    filtered.forEach(function(it) {
+      html += '<div class="inv-item-row">';
+      html += '<div class="inv-item-info">';
+      html += '<div class="inv-item-name">' + it.name + '</div>';
+      html += '<div class="inv-item-meta">';
+      if (it.partNum) html += '<span style="color:' + catColor + ';font-weight:600;">' + it.partNum + '</span>';
+      if (it.brand) html += '<span>' + it.brand + '</span>';
+      if (it.size) html += '<span>' + it.size + '</span>';
+      if (it.duration) html += '<span>&#x23F1; ' + it.duration + '</span>';
+      if (it.liftTime) html += '<span>&#x2B06; ' + it.liftTime + '</span>';
+      html += '</div></div>';
+      html += '<div class="inv-item-qty">' + it.qty + '</div>';
+      if (it.videoLink && it.videoLink.indexOf('http') === 0) {
+        html += '<a class="inv-item-video" href="' + it.videoLink + '" target="_blank" onclick="event.stopPropagation();">&#x25B6;</a>';
+      }
+      html += '</div>';
+    });
+    shown += filtered.length;
   });
+
+  if (shown === 0 && searchTerm) {
+    html = '<div class="inv-empty"><div class="inv-empty-icon">&#x1F50D;</div><div class="inv-empty-title">No Results</div><div class="inv-empty-sub">No products match "' + searchTerm + '"</div></div>';
+  }
 
   container.innerHTML = html;
+}
+
+function switchInvCat(btn, cat) {
+  currentInvCat = cat;
+  document.querySelectorAll('.inv-cat-tab').forEach(function(t) { t.classList.remove('active'); });
+  btn.classList.add('active');
+  renderInvProducts();
+}
+
+function filterInventory() {
+  renderInvProducts();
+}
+
+function exportInventory() {
+  if (Object.keys(inventoryData).length === 0) { showToast('No inventory to export'); return; }
+  var wb = XLSX.utils.book_new();
+  Object.keys(inventoryData).forEach(function(cat) {
+    var data = [['Product Name','Part Number','Brand','Size','Quantity','Video Link','Duration','Lift Time']];
+    inventoryData[cat].forEach(function(it) {
+      data.push([it.name, it.partNum, it.brand, it.size, it.qty, it.videoLink, it.duration, it.liftTime]);
+    });
+    var ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [{wch:40},{wch:18},{wch:18},{wch:12},{wch:12},{wch:22},{wch:12},{wch:12}];
+    XLSX.utils.book_append_sheet(wb, ws, cat.substring(0, 31));
+  });
+  XLSX.writeFile(wb, 'Solid_Second_Inventory_Export.xlsx');
+  showToast('Inventory exported!');
 }
 
 // ===== PLANNER LOGIC =====
@@ -1237,15 +1508,119 @@ function runPlanner() {
   container.classList.add('show');
 }
 
-// ===== INV TABS =====
-function switchInvTab(btn, tab) {
-  document.querySelectorAll('.inv-tab').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('inv-products').style.display = tab === 'products' ? 'block' : 'none';
-  document.getElementById('inv-upload').style.display = tab === 'upload' ? 'block' : 'none';
+// (inv tabs removed — replaced by category tabs above)
+
+// ===== EQUIPMENT MODAL LOGIC =====
+const EQUIP_ITEMS = {
+  module: [
+    { value: '18M', label: '18M Module (18-cue)' },
+    { value: '36M', label: '36M Module (36-cue)' },
+    { value: '72M', label: '72M Module (72-cue)' }
+  ],
+  controller: [
+    { value: '18R2 Command Center', label: '18R2 Command Center' },
+    { value: '18R2 Controller', label: '18R2 Controller' }
+  ],
+  accessory: [
+    { value: 'Mini Slats w/ Case', label: 'Mini Slats w/ Case' },
+    { value: 'Slats', label: 'Slats' },
+    { value: 'M-Cable', label: 'M-Cable' },
+    { value: "50' Cables", label: "50' Cables" },
+    { value: 'other', label: 'Other (type below)' }
+  ],
+  fireball: [
+    { value: 'Fireball Tubes', label: 'Fireball Tubes' }
+  ],
+  rack: [
+    { value: 'Craigco 35-shot', label: 'Craigco 35-shot' },
+    { value: 'Craigco 18-shot 60mm', label: 'Craigco 18-shot 60mm' },
+    { value: 'Craigco 2.5" (rack of 12)', label: 'Craigco 2.5" (rack of 12)' },
+    { value: 'Craigco 3" (rack of 12)', label: 'Craigco 3" (rack of 12)' },
+    { value: 'Craigco 4" (rack of 8)', label: 'Craigco 4" (rack of 8)' }
+  ]
+};
+
+function updateEditItem() {
+  var type = document.getElementById('editType').value;
+  var sel = document.getElementById('editItem');
+  var cueGroup = document.getElementById('editCueGroup');
+
+  if (!type) {
+    sel.innerHTML = '<option value="">Select type first...</option>';
+    cueGroup.style.display = 'none';
+    return;
+  }
+
+  var items = EQUIP_ITEMS[type] || [];
+  sel.innerHTML = '<option value="">Select item...</option>' +
+    items.map(function(it) { return '<option value="' + it.value + '">' + it.label + '</option>'; }).join('');
+
+  // Show cue type selector only for modules
+  cueGroup.style.display = type === 'module' ? 'block' : 'none';
 }
 
-// ===== POPULATE EDIT MODAL =====
+function updateEditCue() {
+  // placeholder for future logic
+}
+
+function saveEquipment() {
+  var memberKey = document.getElementById('editMember').value;
+  var type = document.getElementById('editType').value;
+  var item = document.getElementById('editItem').value;
+  var qty = parseInt(document.getElementById('editQty').value) || 0;
+
+  if (!memberKey || !type || !item || qty <= 0) {
+    showToast('Please fill in all fields');
+    return;
+  }
+
+  var member = CREW[memberKey];
+  if (!member) { showToast('Invalid crew member'); return; }
+
+  if (type === 'module') {
+    var cue = document.getElementById('editCue').value;
+    // Check if this module/cue combo already exists
+    var existing = member.modules.find(function(m) { return m.type === item && m.cue === cue; });
+    if (existing) {
+      existing.qty = qty;
+    } else {
+      member.modules.push({ type: item, cue: cue, qty: qty });
+    }
+  } else if (type === 'controller' || type === 'accessory') {
+    var existing = member.accessories.find(function(a) { return a.name === item; });
+    if (existing) {
+      existing.qty = qty;
+    } else {
+      member.accessories.push({ name: item, qty: qty });
+    }
+  } else if (type === 'fireball') {
+    member.fireballTubes = qty;
+  } else if (type === 'rack') {
+    var existing = member.racks.find(function(r) { return r.name === item; });
+    if (existing) {
+      existing.qty = qty;
+    } else {
+      member.racks.push({ name: item, qty: qty });
+    }
+  }
+
+  // Re-render everything
+  document.getElementById('stat-modules').textContent = getAllModules();
+  document.getElementById('stat-tubes').textContent = getAllTubes();
+  renderCrewSidebar();
+  renderEquipment(currentFilter);
+  renderMembers();
+
+  closeModal('addEquipModal');
+  showToast(CREW[memberKey].name + ' — ' + item + ' updated to ' + qty);
+
+  // Reset form
+  document.getElementById('editType').value = '';
+  document.getElementById('editItem').innerHTML = '<option value="">Select type first...</option>';
+  document.getElementById('editCueGroup').style.display = 'none';
+  document.getElementById('editQty').value = '';
+}
+
 function populateEditMembers() {
   const sel = document.getElementById('editMember');
   sel.innerHTML = Object.keys(CREW).map(k => '<option value="' + k + '">' + CREW[k].name + '</option>').join('');
@@ -1261,6 +1636,7 @@ document.addEventListener('DOMContentLoaded', function() {
     renderEquipment('all');
     renderEvents();
     renderMembers();
+    loadInventoryFromStorage();
     renderInventory();
     populateEditMembers();
   } catch(e) { console.error('Init error:', e); }
