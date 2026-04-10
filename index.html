@@ -1455,7 +1455,8 @@ function sortInventoryItems(items) {
 
 // Shared merge/subtract logic for both Excel and PDF imports
 function mergeIntoInventory(newData, mode) {
-  var removed = 0;
+  var report = { matched: 0, notFound: [], shortages: [] };
+
   Object.keys(newData).forEach(function(cat) {
     if (mode === 'add') {
       if (!inventoryData[cat]) inventoryData[cat] = [];
@@ -1466,6 +1467,7 @@ function mergeIntoInventory(newData, mode) {
             if (inventoryData[cat][i].partNum === newItem.partNum) {
               inventoryData[cat][i].qty += newItem.qty;
               found = true;
+              report.matched++;
               break;
             }
           }
@@ -1473,38 +1475,74 @@ function mergeIntoInventory(newData, mode) {
         if (!found) inventoryData[cat].push(newItem);
       });
     } else if (mode === 'remove') {
-      // Subtract quantities — search ALL categories for matching part numbers
       newData[cat].forEach(function(removeItem) {
-        if (!removeItem.partNum) return;
         var found = false;
-        Object.keys(inventoryData).forEach(function(existCat) {
-          for (var i = 0; i < inventoryData[existCat].length; i++) {
-            if (inventoryData[existCat][i].partNum === removeItem.partNum) {
-              inventoryData[existCat][i].qty -= removeItem.qty;
-              if (inventoryData[existCat][i].qty < 0) inventoryData[existCat][i].qty = 0;
-              removed++;
-              found = true;
-              break;
-            }
-          }
-        });
-        if (!found) {
-          // Try fuzzy match on description if part number didn't match
-          var rName = removeItem.name.toLowerCase();
+        var searchKey = removeItem.partNum || '';
+        var searchName = removeItem.name.toLowerCase();
+
+        // Search ALL categories for matching part number
+        if (searchKey) {
           Object.keys(inventoryData).forEach(function(existCat) {
             if (found) return;
             for (var i = 0; i < inventoryData[existCat].length; i++) {
-              if (inventoryData[existCat][i].name.toLowerCase() === rName) {
-                inventoryData[existCat][i].qty -= removeItem.qty;
-                if (inventoryData[existCat][i].qty < 0) inventoryData[existCat][i].qty = 0;
-                removed++;
+              if (inventoryData[existCat][i].partNum === searchKey) {
+                var had = inventoryData[existCat][i].qty;
+                var need = removeItem.qty;
+                inventoryData[existCat][i].qty -= need;
+                if (inventoryData[existCat][i].qty < 0) {
+                  report.shortages.push({
+                    name: removeItem.name,
+                    partNum: searchKey,
+                    needed: need,
+                    had: had,
+                    short: need - had
+                  });
+                  inventoryData[existCat][i].qty = 0;
+                }
+                report.matched++;
                 found = true;
                 break;
               }
             }
           });
         }
+
+        // Fuzzy match on description if part number didn't match
+        if (!found) {
+          Object.keys(inventoryData).forEach(function(existCat) {
+            if (found) return;
+            for (var i = 0; i < inventoryData[existCat].length; i++) {
+              if (inventoryData[existCat][i].name.toLowerCase() === searchName) {
+                var had = inventoryData[existCat][i].qty;
+                var need = removeItem.qty;
+                inventoryData[existCat][i].qty -= need;
+                if (inventoryData[existCat][i].qty < 0) {
+                  report.shortages.push({
+                    name: removeItem.name,
+                    partNum: searchKey,
+                    needed: need,
+                    had: had,
+                    short: need - had
+                  });
+                  inventoryData[existCat][i].qty = 0;
+                }
+                report.matched++;
+                found = true;
+                break;
+              }
+            }
+          });
+        }
+
+        if (!found) {
+          report.notFound.push({
+            name: removeItem.name,
+            partNum: searchKey,
+            qty: removeItem.qty
+          });
+        }
       });
+
       // Clean out zero-qty items
       Object.keys(inventoryData).forEach(function(existCat) {
         inventoryData[existCat] = inventoryData[existCat].filter(function(it) { return it.qty > 0; });
@@ -1513,7 +1551,65 @@ function mergeIntoInventory(newData, mode) {
     }
     if (inventoryData[cat]) sortInventoryItems(inventoryData[cat]);
   });
-  return removed;
+
+  // Show deduction report if in remove mode
+  if (mode === 'remove') showDeductionReport(report);
+
+  return report;
+}
+
+function showDeductionReport(report) {
+  // Build report modal content
+  var html = '<div class="modal-handle"></div><h2>Deduction Report</h2>';
+  html += '<div style="margin-bottom:16px;font-size:13px;color:var(--ss-text-muted);">Matched ' + report.matched + ' product' + (report.matched !== 1 ? 's' : '') + ' in your inventory.</div>';
+
+  if (report.shortages.length > 0) {
+    html += '<div style="background:rgba(198,40,40,0.15);border:1px solid rgba(198,40,40,0.4);border-radius:8px;padding:12px;margin-bottom:14px;">';
+    html += '<div style="font-weight:700;color:#EF5350;margin-bottom:8px;font-size:14px;">&#x26A0; Shortages (' + report.shortages.length + ')</div>';
+    html += '<div style="font-size:12px;color:var(--ss-text-muted);margin-bottom:8px;">You used more than you had in stock:</div>';
+    report.shortages.forEach(function(s) {
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;">';
+      html += '<div><strong>' + s.name + '</strong>' + (s.partNum ? ' <span style="color:var(--ss-orange);">' + s.partNum + '</span>' : '') + '</div>';
+      html += '<div style="text-align:right;white-space:nowrap;"><span style="color:#EF5350;font-weight:700;">Short ' + s.short + '</span> <span style="color:var(--ss-text-muted);font-size:11px;">(had ' + s.had + ', used ' + s.needed + ')</span></div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  if (report.notFound.length > 0) {
+    html += '<div style="background:rgba(232,112,10,0.1);border:1px solid rgba(232,112,10,0.3);border-radius:8px;padding:12px;margin-bottom:14px;">';
+    html += '<div style="font-weight:700;color:var(--ss-orange);margin-bottom:8px;font-size:14px;">&#x2753; Not Found in Inventory (' + report.notFound.length + ')</div>';
+    html += '<div style="font-size:12px;color:var(--ss-text-muted);margin-bottom:8px;">These were in the show file but not in your inventory:</div>';
+    report.notFound.forEach(function(nf) {
+      html += '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;">';
+      html += '<div>' + nf.name + (nf.partNum ? ' <span style="color:var(--ss-orange);">' + nf.partNum + '</span>' : '') + '</div>';
+      html += '<div style="font-weight:600;">' + nf.qty + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  if (report.shortages.length === 0 && report.notFound.length === 0) {
+    html += '<div style="background:rgba(46,125,50,0.15);border:1px solid rgba(46,125,50,0.4);border-radius:8px;padding:16px;text-align:center;">';
+    html += '<div style="font-size:24px;margin-bottom:8px;">&#x2705;</div>';
+    html += '<div style="font-weight:700;color:#66BB6A;font-size:14px;">All Clear</div>';
+    html += '<div style="font-size:12px;color:var(--ss-text-muted);margin-top:4px;">Everything deducted cleanly — no shortages.</div>';
+    html += '</div>';
+  }
+
+  html += '<div class="form-actions" style="margin-top:16px;"><button class="btn-modal-primary" onclick="closeModal(\'deductReportModal\')">Got It</button></div>';
+
+  // Create or update the modal
+  var modal = document.getElementById('deductReportModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'deductReportModal';
+    modal.addEventListener('click', function(e) { if (e.target === modal) modal.classList.remove('open'); });
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = '<div class="modal-sheet" style="max-height:80vh;overflow-y:auto;">' + html + '</div>';
+  openModal('deductReportModal');
 }
 
 function handleInventoryUpload(input) {
