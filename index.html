@@ -2045,12 +2045,19 @@ function show13Warning(items13) {
 // Detect if an item is 1.3G (federally regulated — not tracked in this app)
 function is13G(item) {
   var desc = (item.name + ' ' + item.partNum + ' ' + (item.size || '')).toLowerCase();
-  // 2.5" and up are 1.3, plus known 1.3 keywords
-  if (desc.match(/^2\.5"|^3"|^4"|^5"|^6"|^12"|fireball|girandola|salute/)) return true;
-  if (desc.match(/\b62mm\b/) && desc.match(/shell|single shot|peony|brocade|horsetail/)) return true;
+  // Pro 1.4 items are NEVER 1.3 — bail out early
+  if (desc.match(/pro\s*1\.4|1\.4\s*shell|1\.4\s*pro/)) return false;
+  // Known 1.4 brand prefixes on 62mm items — these are consumer, not 1.3
+  var pn = (item.partNum || '').toUpperCase();
+  if (desc.match(/\b62mm\b/) && pn.match(/^(PFX|PSS|PSC|PCA|RA|WPL|JLP)/)) return false;
+  // True 1.3: 3" and larger shells (by inch size)
   if (desc.match(/\b(2\.5|3|4|5|6|8|12)\s*"/)) return true;
-  if (desc.match(/gua |gua$/)) return true; // Guangzhou shells are 1.3
-  if (desc.match(/wiz .*(peony|chrys|strobe|ring|willow|palm|rain|fish|glitter)/)) return true; // Wizard shells
+  // Fireballs and salutes are 1.3
+  if (desc.match(/\bfireball\b|\bsalute\b/)) return true;
+  // Guangzhou shells are 1.3
+  if (desc.match(/gua |gua$/)) return true;
+  // Wizard display shells (wiz + shell effect name) are 1.3
+  if (desc.match(/wiz .*(peony|chrys|strobe|ring|willow|palm|rain|fish|glitter)/)) return true;
   return false;
 }
 
