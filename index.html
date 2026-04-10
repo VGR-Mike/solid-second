@@ -1453,27 +1453,97 @@ function sortInventoryItems(items) {
   return items;
 }
 
+// Shared merge/subtract logic for both Excel and PDF imports
+function mergeIntoInventory(newData, mode) {
+  var removed = 0;
+  Object.keys(newData).forEach(function(cat) {
+    if (mode === 'add') {
+      if (!inventoryData[cat]) inventoryData[cat] = [];
+      newData[cat].forEach(function(newItem) {
+        var found = false;
+        if (newItem.partNum) {
+          for (var i = 0; i < inventoryData[cat].length; i++) {
+            if (inventoryData[cat][i].partNum === newItem.partNum) {
+              inventoryData[cat][i].qty += newItem.qty;
+              found = true;
+              break;
+            }
+          }
+        }
+        if (!found) inventoryData[cat].push(newItem);
+      });
+    } else if (mode === 'remove') {
+      // Subtract quantities — search ALL categories for matching part numbers
+      newData[cat].forEach(function(removeItem) {
+        if (!removeItem.partNum) return;
+        var found = false;
+        Object.keys(inventoryData).forEach(function(existCat) {
+          for (var i = 0; i < inventoryData[existCat].length; i++) {
+            if (inventoryData[existCat][i].partNum === removeItem.partNum) {
+              inventoryData[existCat][i].qty -= removeItem.qty;
+              if (inventoryData[existCat][i].qty < 0) inventoryData[existCat][i].qty = 0;
+              removed++;
+              found = true;
+              break;
+            }
+          }
+        });
+        if (!found) {
+          // Try fuzzy match on description if part number didn't match
+          var rName = removeItem.name.toLowerCase();
+          Object.keys(inventoryData).forEach(function(existCat) {
+            if (found) return;
+            for (var i = 0; i < inventoryData[existCat].length; i++) {
+              if (inventoryData[existCat][i].name.toLowerCase() === rName) {
+                inventoryData[existCat][i].qty -= removeItem.qty;
+                if (inventoryData[existCat][i].qty < 0) inventoryData[existCat][i].qty = 0;
+                removed++;
+                found = true;
+                break;
+              }
+            }
+          });
+        }
+      });
+      // Clean out zero-qty items
+      Object.keys(inventoryData).forEach(function(existCat) {
+        inventoryData[existCat] = inventoryData[existCat].filter(function(it) { return it.qty > 0; });
+        if (inventoryData[existCat].length === 0) delete inventoryData[existCat];
+      });
+    }
+    if (inventoryData[cat]) sortInventoryItems(inventoryData[cat]);
+  });
+  return removed;
+}
+
 function handleInventoryUpload(input) {
   if (!input.files || !input.files[0]) return;
   var file = input.files[0];
   var ext = file.name.split('.').pop().toLowerCase();
 
-  if (ext === 'pdf') {
-    handlePdfUpload(file);
-  } else if (ext === 'xlsx' || ext === 'xls') {
-    handleExcelUpload(file);
-  } else {
+  if (ext !== 'pdf' && ext !== 'xlsx' && ext !== 'xls') {
     showToast('Unsupported file type. Use .xlsx or .pdf');
+    input.value = '';
+    return;
+  }
+
+  // Ask: add or remove?
+  var hasExisting = Object.keys(inventoryData).length > 0;
+  var mode = 'add'; // default for empty inventory
+  if (hasExisting) {
+    var choice = confirm('Is this file ADDING to your inventory (new purchase / restock)?\n\nOK = Add to inventory\nCancel = Remove from inventory (post-show deduction)');
+    mode = choice ? 'add' : 'remove';
+  }
+
+  if (ext === 'pdf') {
+    handlePdfUpload(file, mode);
+  } else {
+    handleExcelUpload(file, mode);
   }
   input.value = '';
 }
 
-function handleExcelUpload(file) {
-  var hasExisting = Object.keys(inventoryData).length > 0;
-  var mergeMode = false;
-  if (hasExisting) {
-    mergeMode = confirm('You have existing inventory.\n\nOK = Merge new items into existing inventory\nCancel = Replace all inventory with this file');
-  }
+function handleExcelUpload(file, mode) {
 
   var reader = new FileReader();
   reader.onload = function(e) {
@@ -1519,26 +1589,14 @@ function handleExcelUpload(file) {
         if (items.length > 0) newData[sheetName] = items;
       });
 
-      if (mergeMode) {
+      var hasExisting = Object.keys(inventoryData).length > 0;
+      if (mode === 'add' && hasExisting) {
         // Merge: add new items into existing, update qty for matching part numbers
-        Object.keys(newData).forEach(function(cat) {
-          if (!inventoryData[cat]) { inventoryData[cat] = []; }
-          newData[cat].forEach(function(newItem) {
-            var found = false;
-            if (newItem.partNum) {
-              for (var i = 0; i < inventoryData[cat].length; i++) {
-                if (inventoryData[cat][i].partNum === newItem.partNum) {
-                  inventoryData[cat][i].qty += newItem.qty;
-                  found = true;
-                  break;
-                }
-              }
-            }
-            if (!found) inventoryData[cat].push(newItem);
-          });
-          sortInventoryItems(inventoryData[cat]);
-        });
-        showToast('Inventory merged — now ' + getTotalInvItems() + ' products');
+        mergeIntoInventory(newData, 'add');
+        showToast('Inventory updated — ' + getTotalInvItems() + ' products');
+      } else if (mode === 'remove' && hasExisting) {
+        mergeIntoInventory(newData, 'remove');
+        showToast('Inventory reduced — ' + getTotalInvItems() + ' products remaining');
       } else {
         inventoryData = newData;
         showToast('Inventory loaded: ' + getTotalInvItems() + ' products');
@@ -1554,7 +1612,7 @@ function handleExcelUpload(file) {
 }
 
 // ===== PDF SUPPLIER ORDER PARSER =====
-function handlePdfUpload(file) {
+function handlePdfUpload(file, mode) {
   if (!window.pdfjsLib) {
     showToast('PDF library not loaded. Check your internet connection.');
     return;
@@ -1568,10 +1626,9 @@ function handlePdfUpload(file) {
       for (var p = 1; p <= pdf.numPages; p++) {
         pagePromises.push(pdf.getPage(p).then(function(page) {
           return page.getTextContent().then(function(tc) {
-            // Group text items by Y position to reconstruct rows
             var lines = {};
             tc.items.forEach(function(item) {
-              var y = Math.round(item.transform[5]); // Y position
+              var y = Math.round(item.transform[5]);
               if (!lines[y]) lines[y] = [];
               lines[y].push({ x: item.transform[4], text: item.str.trim() });
             });
@@ -1580,7 +1637,18 @@ function handlePdfUpload(file) {
         }));
       }
       Promise.all(pagePromises).then(function(pageLines) {
-        parsePdfOrderLines(pageLines, file.name);
+        // Detect format: Finale 3D "Product Totals" vs Casabella supplier order
+        var allText = '';
+        pageLines.forEach(function(lines) {
+          Object.values(lines).forEach(function(cells) {
+            cells.forEach(function(c) { allText += c.text + ' '; });
+          });
+        });
+        if (allText.indexOf('Product Totals') >= 0 || allText.indexOf('NEQ') >= 0 || allText.indexOf('.fin') >= 0) {
+          parseFinale3dLines(pageLines, mode);
+        } else {
+          parsePdfOrderLines(pageLines, file.name, mode);
+        }
       });
     }).catch(function(err) {
       showToast('Error reading PDF: ' + err.message);
@@ -1589,7 +1657,7 @@ function handlePdfUpload(file) {
   reader.readAsArrayBuffer(file);
 }
 
-function parsePdfOrderLines(pageLines, fileName) {
+function parsePdfOrderLines(pageLines, fileName, mode) {
   var allItems = [];
   // Known part number prefixes for supplier orders
   var partPrefixes = /^(PFX|PSS|PSC|PCA|PM\d|RA\d|WPL|JLP|BF|WR|SP76)/i;
@@ -1686,40 +1754,155 @@ function parsePdfOrderLines(pageLines, fileName) {
   // Sort each category
   Object.keys(categorized).forEach(function(cat) { sortInventoryItems(categorized[cat]); });
 
-  // Ask user whether to merge or replace
+  // Use the mode passed from handleInventoryUpload
   var hasExisting = Object.keys(inventoryData).length > 0;
-  if (hasExisting) {
-    var merge = confirm('You have existing inventory.\n\nOK = Merge PDF items into existing inventory\nCancel = Replace all inventory with PDF items');
-    if (merge) {
-      // Merge into existing categories
-      Object.keys(categorized).forEach(function(cat) {
-        if (!inventoryData[cat]) inventoryData[cat] = [];
-        categorized[cat].forEach(function(newItem) {
-          // Check if part number already exists — update qty if so
-          var found = false;
-          if (newItem.partNum) {
-            for (var i = 0; i < inventoryData[cat].length; i++) {
-              if (inventoryData[cat][i].partNum === newItem.partNum) {
-                inventoryData[cat][i].qty += newItem.qty;
-                found = true;
-                break;
-              }
-            }
-          }
-          if (!found) inventoryData[cat].push(newItem);
-        });
-        sortInventoryItems(inventoryData[cat]);
-      });
-    } else {
-      inventoryData = categorized;
-    }
+  if (hasExisting && (mode === 'add' || mode === 'remove')) {
+    mergeIntoInventory(categorized, mode);
+    var verb = mode === 'add' ? 'added to' : 'removed from';
+    showToast(allItems.length + ' products ' + verb + ' inventory');
   } else {
     inventoryData = categorized;
+    showToast('PDF imported: ' + allItems.length + ' products');
   }
 
   saveInventoryToStorage();
   renderInventory();
-  showToast('PDF imported: ' + allItems.length + ' products from supplier order');
+}
+
+// ===== FINALE 3D PRODUCT TOTALS PARSER =====
+function parseFinale3dLines(pageLines, mode) {
+  var allItems = [];
+  // Finale format: Size | Part Number | Description | Quantity | Price | Cost | Weight | NEQ
+  // Part numbers appear after a size column (10mm, 20mm, 30mm, 1", 1.2", 2", etc.)
+  var sizePattern = /^(\d+mm|[\d.]+"|[\d.]+in|\d+\.\d+")$/i;
+  var partPrefixes = /^(PFX|PSS|PSC|PCA|PM\d|RA\d|WPL|JLP|BF|WR|SP76|SWNA|MN\d|SE\d|\d{5})/i;
+
+  pageLines.forEach(function(lines) {
+    var yPositions = Object.keys(lines).map(Number).sort(function(a,b) { return b - a; });
+
+    yPositions.forEach(function(y) {
+      var cells = lines[y].sort(function(a,b) { return a.x - b.x; });
+      var rowText = cells.map(function(c) { return c.text; }).filter(function(t) { return t.length > 0; });
+
+      if (rowText.length < 3) return;
+      // Skip header rows
+      var joined = rowText.join(' ').toLowerCase();
+      if (joined.indexOf('part number') >= 0 || joined.indexOf('product totals') >= 0) return;
+      if (joined.indexOf('show date') >= 0 || joined.indexOf('location') >= 0) return;
+      if (joined.match(/^\d+\/\d+$/)) return; // page numbers like "1/6"
+      if (joined.indexOf('.fin') >= 0) return; // filename header
+
+      // Find the part number — it's usually the 2nd cell (after size) or 1st cell
+      var partNum = '';
+      var description = '';
+      var quantity = 0;
+      var size = '';
+      var startIdx = 0;
+
+      // Check if first cell is a size
+      if (sizePattern.test(rowText[0])) {
+        size = rowText[0];
+        startIdx = 1;
+      }
+
+      // Look for part number starting from startIdx
+      if (startIdx < rowText.length && partPrefixes.test(rowText[startIdx])) {
+        partNum = rowText[startIdx].toUpperCase();
+        startIdx++;
+      } else if (startIdx + 1 < rowText.length && partPrefixes.test(rowText[startIdx + 1])) {
+        // Sometimes size + extra text before part number
+        partNum = rowText[startIdx + 1].toUpperCase();
+        startIdx += 2;
+      } else {
+        // Could be a non-standard item (e.g. "Band of Brothers", "Take me to your Leader")
+        // Try to find a quantity (number not preceded by $)
+        var foundQty = false;
+        for (var q = rowText.length - 1; q >= 1; q--) {
+          var val = rowText[q];
+          if (val.indexOf('$') >= 0) continue;
+          var n = parseInt(val);
+          if (!isNaN(n) && n > 0 && n < 10000) {
+            quantity = n;
+            description = rowText.slice(startIdx, q).join(' ');
+            foundQty = true;
+            break;
+          }
+        }
+        if (!foundQty || !description) return;
+        if (description) {
+          allItems.push({
+            name: description, partNum: '', brand: '',
+            size: size, qty: quantity, videoLink: '', duration: '', liftTime: ''
+          });
+        }
+        return;
+      }
+
+      // Now find description and quantity from remaining cells
+      // Quantity is the first plain number after description (not a $ price)
+      for (var q = startIdx; q < rowText.length; q++) {
+        var val = rowText[q];
+        if (val.indexOf('$') >= 0) break; // hit prices, stop
+        var n = parseInt(val);
+        if (!isNaN(n) && n > 0 && n < 10000 && q > startIdx) {
+          quantity = n;
+          description = rowText.slice(startIdx, q).join(' ');
+          break;
+        }
+      }
+      // If no quantity found inline, description is everything between partNum and first $
+      if (!quantity) {
+        var descParts = [];
+        for (var d = startIdx; d < rowText.length; d++) {
+          if (rowText[d].indexOf('$') >= 0) break;
+          var n = parseInt(rowText[d]);
+          if (!isNaN(n) && n > 0 && descParts.length > 0) { quantity = n; break; }
+          descParts.push(rowText[d]);
+        }
+        description = descParts.join(' ');
+      }
+
+      if (quantity > 0 && (partNum || description)) {
+        var brand = detectBrand(partNum);
+        allItems.push({
+          name: description || partNum,
+          partNum: partNum,
+          brand: brand,
+          size: size,
+          qty: quantity,
+          videoLink: '', duration: '', liftTime: ''
+        });
+      }
+    });
+  });
+
+  if (allItems.length === 0) {
+    showToast('No products found in this PDF.');
+    return;
+  }
+
+  // Categorize items
+  var categorized = {};
+  allItems.forEach(function(item) {
+    var cat = categorizeItem(item);
+    if (!categorized[cat]) categorized[cat] = [];
+    categorized[cat].push(item);
+  });
+  Object.keys(categorized).forEach(function(cat) { sortInventoryItems(categorized[cat]); });
+
+  // Apply using mode
+  var hasExisting = Object.keys(inventoryData).length > 0;
+  if (hasExisting && (mode === 'add' || mode === 'remove')) {
+    var count = mergeIntoInventory(categorized, mode);
+    var verb = mode === 'add' ? 'added to' : 'deducted from';
+    showToast(allItems.length + ' products ' + verb + ' inventory');
+  } else {
+    inventoryData = categorized;
+    showToast('Loaded ' + allItems.length + ' products from Finale 3D');
+  }
+
+  saveInventoryToStorage();
+  renderInventory();
 }
 
 // Auto-categorize items based on description and part number
@@ -1805,7 +1988,7 @@ function renderInventory() {
   if (hasCats) {
     uploadZone.innerHTML = '<div style="display:flex;align-items:center;gap:12px;">' +
       '<div style="font-size:24px;opacity:0.5;">&#x1F4C2;</div>' +
-      '<div><div style="font-size:14px;font-weight:700;">Upload New / Updated Inventory</div>' +
+      '<div><div style="font-size:14px;font-weight:700;">Upload Inventory (Add or Remove)</div>' +
       '<div style="font-size:12px;color:var(--ss-text-muted);">Drop a .xlsx or supplier .pdf here. Replaces or merges into current data.</div></div></div>' +
       '<input type="file" id="invFileInput" accept=".xlsx,.xls,.pdf" onchange="handleInventoryUpload(this)">';
   } else {
