@@ -1130,11 +1130,17 @@ function renderEquipment(filter) {
 
     m.modules.forEach(mod => {
       const isQP = mod.cue === 'QP';
-      html += '<div class="equip-item">' +
+      const cueColor = isQP ? 'var(--qp-color)' : 'var(--oc-color)';
+      const cueBg = isQP ? 'rgba(66,165,245,0.15)' : 'rgba(232,112,10,0.15)';
+      const cueLabel = isQP ? 'Quick Plug' : 'Onboard Cues';
+      html += '<div class="equip-item" style="border-left:3px solid ' + cueColor + ';">' +
         '<div class="equip-item-left">' +
         '<div class="equip-item-icon ' + (isQP ? 'cobra-qp' : 'cobra') + '">' + (isQP ? '&#x1F50C;' : '&#x1F4E1;') + '</div>' +
-        '<div><div class="equip-item-name">' + mod.type + ' Module <span class="type-tag ' + mod.cue.toLowerCase() + '">' + mod.cue + '</span></div>' +
-        '<div class="equip-item-sub">COBRA ' + (isQP ? 'Quick Plug' : 'Onboard Cues') + '</div></div></div>' +
+        '<div><div class="equip-item-name">' + mod.type + ' COBRA Module</div>' +
+        '<div class="equip-item-sub" style="display:flex;align-items:center;gap:6px;margin-top:3px;">' +
+        '<span class="type-tag ' + mod.cue.toLowerCase() + '" style="font-size:10px;padding:3px 8px;">' + mod.cue + '</span>' +
+        '<span style="color:' + cueColor + ';font-weight:600;">' + cueLabel + '</span>' +
+        '</div></div></div>' +
         '<div class="equip-item-qty">' + mod.qty + '</div></div>';
     });
 
